@@ -159,9 +159,9 @@ describe("ProviderAuthFlows", () => {
 	it("stores a reused Prime CLI key when Prime CLI config sync is disabled", async () => {
 		process.env.HOME = tempDir;
 		process.env.PRIME_TEAM_ID = "env-team";
-		const defaultPrimeDir = join(tempDir, ".prime");
-		mkdirSync(defaultPrimeDir, { recursive: true });
-		writeFileSync(join(defaultPrimeDir, "config.json"), JSON.stringify({ api_key: "prime-cli-key" }));
+		const defaultPromethDir = join(tempDir, ".prometh");
+		mkdirSync(defaultPromethDir, { recursive: true });
+		writeFileSync(join(defaultPromethDir, "config.json"), JSON.stringify({ api_key: "prime-cli-key" }));
 		const authStorage = AuthStorage.create(authJsonPath, { usePrimeCliConfig: false });
 		const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
 			jsonResponse({

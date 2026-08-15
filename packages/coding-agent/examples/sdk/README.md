@@ -1,6 +1,6 @@
 # SDK Examples
 
-Programmatic usage of the Prime Agent SDK via `createAgentSession()` and `createAgentSessionRuntime()`.
+Programmatic usage of the Prometh SDK via `createAgentSession()` and `createAgentSessionRuntime()`.
 
 The published TypeScript packages still use inherited `@earendil-works/pi-*`
 identifiers. Those identifiers are API names, not a dependency on the upstream

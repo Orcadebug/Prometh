@@ -70,7 +70,7 @@ import {
 	type AgentTracePreviewResult,
 	type AgentTraceUploadAllResult,
 	type AgentTraceUploadResult,
-	getPrimeAgentTraceCredential,
+	getPromethTraceCredential,
 	previewAgentTraceFile,
 	uploadAgentTraceFile,
 	uploadAllAgentTraces,
@@ -111,7 +111,7 @@ import {
 } from "../../core/messages.js";
 import { findExactModelReferenceMatch, resolveModelScopeFromModels } from "../../core/model-resolver.js";
 import { parseNewSessionCommand } from "../../core/new-session-command.js";
-import { resolvePrimeAgentTracesBaseUrl } from "../../core/prime-inference-auth.js";
+import { resolvePromethTracesBaseUrl } from "../../core/prime-inference-auth.js";
 import { resolvePrimeInferencePostLoginModelAction } from "../../core/prime-inference-model-selection.js";
 import { parseCommandArgs } from "../../core/prompt-templates.js";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
@@ -9255,7 +9255,7 @@ export class InteractiveMode {
 				return `Trace upload skipped: session file is ${result.size.toLocaleString()} bytes; limit is ${result.maxBytes.toLocaleString()} bytes.`;
 			case "failed":
 				if (result.statusCode === 404) {
-					return "Trace upload endpoint was not found. The platform API may not be deployed yet, or PRIME_AGENT_TRACES_BASE_URL points at the wrong API.";
+					return "Trace upload endpoint was not found. The platform API may not be deployed yet, or PROMETH_TRACES_BASE_URL points at the wrong API.";
 				}
 				return `Trace upload failed: ${result.statusCode ? `HTTP ${result.statusCode}: ` : ""}${result.message}. See ${getAgentTracesLogPath()} for details.`;
 		}
@@ -9356,14 +9356,14 @@ export class InteractiveMode {
 
 		if (command === "status") {
 			await this.settingsManager.reload().catch(() => undefined);
-			const credential = await getPrimeAgentTraceCredential(this.modelRegistry.authStorage);
+			const credential = await getPromethTraceCredential(this.modelRegistry.authStorage);
 			const state = await this.agentConnection.getState();
 			const info = [
 				theme.bold("Trace Sharing"),
 				"",
 				`${theme.fg("dim", "Automatic uploads:")} ${this.settingsManager.getAgentTracesEnabled() ? "Enabled" : "Disabled"}`,
 				`${theme.fg("dim", "Credential:")} ${credential?.label ?? "Not configured"}`,
-				`${theme.fg("dim", "Endpoint:")} ${resolvePrimeAgentTracesBaseUrl()}`,
+				`${theme.fg("dim", "Endpoint:")} ${resolvePromethTracesBaseUrl()}`,
 				`${theme.fg("dim", "Session file:")} ${state.sessionFile ?? "In-memory"}`,
 				"",
 				theme.fg(
@@ -9385,7 +9385,7 @@ export class InteractiveMode {
 		}
 
 		if (command === "login") {
-			await this.createAuthFlows().runPrimeAgentTracesLogin();
+			await this.createAuthFlows().runPromethTracesLogin();
 			return;
 		}
 
@@ -9395,13 +9395,13 @@ export class InteractiveMode {
 		}
 
 		if (command === "on" || command === "enable") {
-			let credential = await getPrimeAgentTraceCredential(this.modelRegistry.authStorage);
+			let credential = await getPromethTraceCredential(this.modelRegistry.authStorage);
 			if (!credential) {
-				const authResult = await this.createAuthFlows().runPrimeAgentTracesLogin();
+				const authResult = await this.createAuthFlows().runPromethTracesLogin();
 				if (authResult.status !== "success") {
 					return;
 				}
-				credential = await getPrimeAgentTraceCredential(this.modelRegistry.authStorage);
+				credential = await getPromethTraceCredential(this.modelRegistry.authStorage);
 			}
 			if (!credential) {
 				this.showError("Trace sharing needs a Prime API key.");
@@ -9420,7 +9420,7 @@ export class InteractiveMode {
 		}
 
 		if (command === "upload" || command === "upload-current") {
-			const credential = await getPrimeAgentTraceCredential(this.modelRegistry.authStorage);
+			const credential = await getPromethTraceCredential(this.modelRegistry.authStorage);
 			if (!credential) {
 				this.showError("Trace sharing needs a Prime API key. Run /traces login.");
 				return;
@@ -9436,7 +9436,7 @@ export class InteractiveMode {
 		}
 
 		if (command === "upload-all") {
-			const credential = await getPrimeAgentTraceCredential(this.modelRegistry.authStorage);
+			const credential = await getPromethTraceCredential(this.modelRegistry.authStorage);
 			if (!credential) {
 				this.showError("Trace sharing needs a Prime API key. Run /traces login.");
 				return;

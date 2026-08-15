@@ -1,9 +1,9 @@
-"""Persistent harness-state helpers for Prime Agent's RLM kernel.
+"""Persistent harness-state helpers for Prometh's RLM kernel.
 
 The state model is intentionally small: it records prompt notes, memory,
 skills, subagent specs, and refinement events in the session-local harness
 store by default; pass ``global_=True`` for the cross-session global store.
-Execution still belongs to Prime Agent's TypeScript host and the existing
+Execution still belongs to Prometh's TypeScript host and the existing
 ``rlm.run`` recursion bridge.
 """
 
@@ -37,7 +37,7 @@ def _slug(raw: str, fallback: str) -> str:
 
 def _agent_dir() -> Path:
     raw = (
-        os.environ.get("PRIME_AGENT_CODING_AGENT_DIR")
+        os.environ.get("PROMETH_CODING_AGENT_DIR")
         or os.environ.get("PI_CODING_AGENT_DIR")
         or str(Path.home() / ".prime" / "agent")
     )

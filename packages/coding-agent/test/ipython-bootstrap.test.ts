@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { getKernelVenvDir } from "../src/core/kernel/bootstrap.js";
 import { KernelManager } from "../src/core/kernel/index.js";
 import { buildRlmBootstrapCode } from "../src/core/tools/ipython.js";
 
@@ -20,7 +21,7 @@ describe("IPython RLM bootstrap", () => {
 	});
 
 	it("disables colored output for subprocesses launched by the kernel", () => {
-		expect(buildRlmBootstrapCode()).toContain('_prime_agent_os.environ["NO_COLOR"] = "1"');
+		expect(buildRlmBootstrapCode()).toContain('_prometh_os.environ["NO_COLOR"] = "1"');
 	});
 
 	it("guards Python skill imports so a broken skill does not abort bootstrap", () => {
@@ -33,19 +34,18 @@ describe("IPython RLM bootstrap", () => {
 			},
 		]);
 
-		expect(code).toContain("except Exception as _prime_agent_skill_error");
-		expect(code).toContain("_PrimeAgentUnavailableSkill");
-		expect(code).toContain("_PRIME_AGENT_SKILL_IMPORT_ERRORS");
-		expect(code).toContain("globals()[_prime_agent_skill_name] = _PrimeAgentUnavailableSkill");
+		expect(code).toContain("except Exception as _prometh_skill_error");
+		expect(code).toContain("_PromethUnavailableSkill");
+		expect(code).toContain("_PROMETH_SKILL_IMPORT_ERRORS");
+		expect(code).toContain("globals()[_prometh_skill_name] = _PromethUnavailableSkill");
 	});
 });
 
 /** Find a python that can launch an ipykernel, or null to skip. */
 function resolveKernelPython(): string | null {
-	const candidates = [
-		process.env.PRIME_AGENT_KERNEL_PYTHON,
-		join(homedir(), ".prime", "agent", "kernel-venv", "bin", "python"),
-	].filter((p): p is string => Boolean(p));
+	const candidates = [process.env.PROMETH_KERNEL_PYTHON, join(getKernelVenvDir(), "bin", "python")].filter(
+		(p): p is string => Boolean(p),
+	);
 	for (const python of candidates) {
 		if (!existsSync(python)) continue;
 		const check = spawnSync(python, ["-c", "import ipykernel"], { encoding: "utf8" });
@@ -58,7 +58,7 @@ const python = resolveKernelPython();
 const describeIfKernel = python ? describe : describe.skip;
 
 describeIfKernel("IPython RLM bootstrap (real kernel)", () => {
-	const dir = mkdtempSync(join(tmpdir(), "prime-agent-bootstrap-"));
+	const dir = mkdtempSync(join(tmpdir(), "prometh-bootstrap-"));
 
 	afterAll(() => {
 		rmSync(dir, { recursive: true, force: true });

@@ -76,7 +76,7 @@ describe("buildRlmPrompt", () => {
 				"",
 				"Python state in the kernel, by contrast, persists across cells: named variables, helper functions, classes, imports, notes, parsed outputs, and helper data structures all remain available in every later turn. Tool calls are themselves Python `await` expressions, so their return values can be bound to variables and composed into program logic just like any other call.",
 				"",
-				"Continual harness state is available as `rlm.harness` and `rlm.get_harness_state()`. CRUD calls are local to this Prime Agent session by default: `rlm.harness.create_memory(...)`, `rlm.harness.update_memory(...)`, `rlm.harness.delete_memory(...)`, `rlm.harness.create_skill(...)`, `rlm.harness.update_skill(...)`, `rlm.harness.delete_skill(...)`, `rlm.harness.create_subagent(...)`, `rlm.harness.update_subagent(...)`, `rlm.harness.delete_subagent(...)`, `rlm.harness.create_prompt_note(...)`, `rlm.harness.update_prompt_note(...)`, `rlm.harness.delete_prompt_note(...)`, plus `rlm.harness.record_refinement(...)` and `rlm.harness.overview()`. Use `global_=True` only for stable cross-session lessons; Python reserves `global`, so literal `global=True` is invalid syntax.",
+				"Continual harness state is available as `rlm.harness` and `rlm.get_harness_state()`. CRUD calls are local to this Prometh session by default: `rlm.harness.create_memory(...)`, `rlm.harness.update_memory(...)`, `rlm.harness.delete_memory(...)`, `rlm.harness.create_skill(...)`, `rlm.harness.update_skill(...)`, `rlm.harness.delete_skill(...)`, `rlm.harness.create_subagent(...)`, `rlm.harness.update_subagent(...)`, `rlm.harness.delete_subagent(...)`, `rlm.harness.create_prompt_note(...)`, `rlm.harness.update_prompt_note(...)`, `rlm.harness.delete_prompt_note(...)`, plus `rlm.harness.record_refinement(...)` and `rlm.harness.overview()`. Use `global_=True` only for stable cross-session lessons; Python reserves `global`, so literal `global=True` is invalid syntax.",
 				"",
 				"Terminology: continual harness names the persisted prompt, memory, skill, and subagent layer; RLM names the runtime, IPython kernel, and native call interface exposed to the model.",
 				"",
@@ -283,8 +283,8 @@ describe("buildSystemPrompt", () => {
 						id: "validation",
 						kind: "memory",
 						title: "Validation",
-						content: "Run `npm run check` after PrimeAgent code changes.",
-						path: "repo/prime-agent",
+						content: "Run `npm run check` after Prometh code changes.",
+						path: "repo/prometh",
 						reference: {},
 						arguments: {},
 						metadata: {},
@@ -356,7 +356,7 @@ describe("buildSystemPrompt", () => {
 		});
 
 		expect(prompt).toContain("# Continual Harness State");
-		expect(prompt).toContain("Local continual harness entries belong to this Prime Agent session");
+		expect(prompt).toContain("Local continual harness entries belong to this Prometh session");
 		expect(prompt).toContain("The continual harness entries below are compact summaries, not full descriptions");
 		expect(prompt).toContain("Use global continual harness refinement only for stable cross-session lessons");
 		expect(prompt).toContain("When to call `await refine.run()`");
@@ -379,7 +379,7 @@ describe("buildSystemPrompt", () => {
 		expect(prompt).toContain("a narrow behavioral policy should become a prompt addendum");
 		expect(prompt).toContain("validation shows a continual harness entry is wrong");
 		expect(prompt).toContain("[global:focused_edits] Focused edits (policy, v1)");
-		expect(prompt).toContain("[global:validation] Validation (repo/prime-agent, v2): Run `npm run check`");
+		expect(prompt).toContain("[global:validation] Validation (repo/prometh, v2): Run `npm run check`");
 		expect(prompt).toContain("[global:review_refinement] Review refinement (quality, v1)");
 		expect(prompt).toContain("[global:refinement_reviewer] Refinement reviewer (review, v1)");
 		expect(prompt).toContain("recent refinements: 1");

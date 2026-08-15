@@ -72,7 +72,7 @@ function createNpmPrefixInstall(template = "pi-prefix-"): { prefix: string; pack
 
 function createHomebrewInstall(): { packageDir: string } {
 	const prefix = mkdtempSync(join(tmpdir(), "pi-homebrew-"));
-	const packageDir = join(prefix, "Cellar", "prime-agent", "0.7.0", "libexec", "lib", "node_modules", "prime-agent");
+	const packageDir = join(prefix, "Cellar", "prometh", "0.7.0", "libexec", "lib", "node_modules", "prometh");
 	mkdirSync(packageDir, { recursive: true });
 	tempDir = prefix;
 	process.env.PI_PACKAGE_DIR = packageDir;
@@ -191,9 +191,9 @@ describe("detectInstallMethod", () => {
 		createHomebrewInstall();
 
 		expect(detectInstallMethod()).toBe("homebrew");
-		expect(getSelfUpdateCommand("prime-agent")).toBeUndefined();
-		expect(getSelfUpdateUnavailableInstruction("prime-agent")).toBe("Update with: brew upgrade prime-agent");
-		expect(getUpdateInstruction("prime-agent")).toBe("Update with: brew upgrade prime-agent");
+		expect(getSelfUpdateCommand("prometh")).toBeUndefined();
+		expect(getSelfUpdateUnavailableInstruction("prometh")).toBe("Update with: brew upgrade prometh");
+		expect(getUpdateInstruction("prometh")).toBe("Update with: brew upgrade prometh");
 	});
 
 	test("self-updates npm installs from custom prefixes", () => {
@@ -235,7 +235,7 @@ describe("detectInstallMethod", () => {
 
 	test("self-updates tarball specs without uninstalling the same logical package first", () => {
 		const { prefix } = createNpmPrefixInstall();
-		const tarballUrl = "https://downloads.example.test/prime-agent/prime-agent-0.73.0.tgz";
+		const tarballUrl = "https://downloads.example.test/prometh/prometh-0.73.0.tgz";
 
 		const command = getSelfUpdateCommand("@earendil-works/pi-coding-agent", undefined, tarballUrl);
 
@@ -248,9 +248,9 @@ describe("detectInstallMethod", () => {
 
 	test("self-updates renamed tarball packages by uninstalling the old package after install", () => {
 		const { prefix } = createNpmPrefixInstall();
-		const tarballUrl = "https://downloads.example.test/prime-agent/prime-agent-0.73.0.tgz";
+		const tarballUrl = "https://downloads.example.test/prometh/prometh-0.73.0.tgz";
 
-		const command = getSelfUpdateCommand("@earendil-works/pi-coding-agent", undefined, tarballUrl, "prime-agent");
+		const command = getSelfUpdateCommand("@earendil-works/pi-coding-agent", undefined, tarballUrl, "prometh");
 
 		expect(command).toEqual({
 			command: "npm",
@@ -411,7 +411,7 @@ describe("detectInstallMethod", () => {
 
 describe("session paths", () => {
 	test("uses the short app-prefixed session dir env var", () => {
-		expect(ENV_SESSION_DIR).toBe("PRIME_AGENT_SESSION_DIR");
+		expect(ENV_SESSION_DIR).toBe("PROMETH_SESSION_DIR");
 	});
 
 	test("uses the session root env var when computing sessions dir", () => {
@@ -430,9 +430,9 @@ describe("session paths", () => {
 	});
 
 	test("expands tilde in the session root env var", () => {
-		process.env[ENV_SESSION_DIR] = "~/prime-agent-sessions";
+		process.env[ENV_SESSION_DIR] = "~/prometh-sessions";
 
-		expect(getSessionsDir("/agent")).toBe(join(homedir(), "prime-agent-sessions"));
+		expect(getSessionsDir("/agent")).toBe(join(homedir(), "prometh-sessions"));
 	});
 
 	test("uses the env session root as the default session dir", () => {

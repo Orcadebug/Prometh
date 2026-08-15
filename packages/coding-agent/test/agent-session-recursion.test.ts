@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Agent, type AgentMessage, type StreamFn } from "@earendil-works/pi-agent-core";
@@ -22,6 +22,7 @@ import {
 import { AgentSession } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";
 import type { LoadExtensionsResult } from "../src/core/extensions/index.js";
+import { getKernelVenvDir } from "../src/core/kernel/bootstrap.js";
 import { type HostRequestHandlers, KernelManager } from "../src/core/kernel/index.js";
 import { convertToLlm } from "../src/core/messages.js";
 import { ModelRegistry } from "../src/core/model-registry.js";
@@ -2137,9 +2138,8 @@ describe("AgentSession rlm recursion", () => {
 	});
 
 	it("lets a stale kernel depth cap defer to the live host gate", () => {
-		const python =
-			process.env.PRIME_AGENT_KERNEL_PYTHON ?? join(homedir(), ".prime", "agent", "kernel-venv", "bin", "python");
-		const runtime = join(process.cwd(), "..", "..", "prime-agent-runtime", "src");
+		const python = process.env.PROMETH_KERNEL_PYTHON ?? join(getKernelVenvDir(), "bin", "python");
+		const runtime = join(process.cwd(), "..", "..", "prometh-runtime", "src");
 		const probe = spawnSync(
 			python,
 			["-c", "import asyncio, rlm; rlm.Comm = None; asyncio.run(rlm.run('raised live cap'))"],
@@ -3249,7 +3249,7 @@ describe("AgentSession RLM session dir", () => {
 		const root = createSession(SessionManager.inMemory(tempDir));
 		const inspectable = root as unknown as InspectableRlmDirSession;
 
-		const before = readdirSync(tmpdir()).filter((name) => name.startsWith("prime-agent-rlm-"));
+		const before = readdirSync(tmpdir()).filter((name) => name.startsWith("prometh-rlm-"));
 
 		expect(inspectable._ensureRlmSessionDir()).toBeUndefined();
 		const env = inspectable._rlmKernelEnv();
@@ -3258,7 +3258,7 @@ describe("AgentSession RLM session dir", () => {
 		expect(env.RLM_GLOBAL_HARNESS_STATE_DIR).toBeDefined();
 		expect(env).toMatchObject({ RLM_DEPTH: "0" });
 
-		const after = readdirSync(tmpdir()).filter((name) => name.startsWith("prime-agent-rlm-"));
+		const after = readdirSync(tmpdir()).filter((name) => name.startsWith("prometh-rlm-"));
 		expect(after).toEqual(before);
 	});
 
@@ -3346,20 +3346,20 @@ describe("AgentSession RLM session dir", () => {
 		const agentDir = join(tempDir, "custom-agent-dir");
 		const root = createSession(SessionManager.inMemory(tempDir), agentDir);
 		const env = (root as unknown as InspectableRlmDirSession)._rlmKernelEnv();
-		expect(env.PRIME_AGENT_CODING_AGENT_DIR).toBe(agentDir);
+		expect(env.PROMETH_CODING_AGENT_DIR).toBe(agentDir);
 	});
 
 	it("omits the agentDir env var when none is configured", () => {
 		const root = createSession(SessionManager.inMemory(tempDir));
 		const env = (root as unknown as InspectableRlmDirSession)._rlmKernelEnv();
-		expect(env.PRIME_AGENT_CODING_AGENT_DIR).toBeUndefined();
+		expect(env.PROMETH_CODING_AGENT_DIR).toBeUndefined();
 	});
 
 	it("exports agentDir but skips key injection when no websearch skill is loaded", () => {
 		const agentDir = join(tempDir, "custom-agent-dir");
 		const root = createSession(SessionManager.inMemory(tempDir), agentDir, "stored-key", false);
 		const env = (root as unknown as InspectableRlmDirSession)._rlmKernelEnv();
-		expect(env.PRIME_AGENT_CODING_AGENT_DIR).toBe(agentDir);
+		expect(env.PROMETH_CODING_AGENT_DIR).toBe(agentDir);
 		expect(env.SERPER_API_KEY).toBeUndefined();
 	});
 

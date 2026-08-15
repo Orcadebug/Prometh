@@ -1,6 +1,6 @@
 # Compute-Driven Discovery
 
-Prime Agent doesn't become smarter merely because GPUs are available.
+Prometh doesn't become smarter merely because GPUs are available.
 
 Compute-driven discovery works by turning execution into experience:
 

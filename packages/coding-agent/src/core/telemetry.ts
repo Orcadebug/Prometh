@@ -10,7 +10,9 @@ import type { AuthCredential, AuthStatus } from "./auth-storage.js";
 import type { SettingsManager } from "./settings-manager.js";
 import { isBuiltinSlashCommandName, resolveBuiltinSlashCommandName } from "./slash-commands.js";
 
-const DEFAULT_TELEMETRY_ENDPOINT = "https://api.primeintellect.ai/api/v1/agent-analytics/events";
+// Prometh ships with no analytics endpoint: telemetry is opt-in only.
+// Set PROMETH_TELEMETRY_ENDPOINT and enable telemetry in settings to opt in.
+
 const TELEMETRY_STATE_FILE = "telemetry.json";
 const TELEMETRY_STATE_VERSION = 1;
 const DEFAULT_BATCH_SIZE = 10;
@@ -208,7 +210,7 @@ export function isTelemetryEnabled(settingsManager: SettingsManager): boolean {
 	if (parseBooleanOverride(process.env.DO_NOT_TRACK) === true) {
 		return false;
 	}
-	const override = parseBooleanOverride(process.env.PRIME_AGENT_TELEMETRY);
+	const override = parseBooleanOverride(process.env.PROMETH_TELEMETRY);
 	if (override !== undefined) {
 		return override;
 	}
@@ -324,7 +326,8 @@ export class TelemetryClient implements TelemetrySink {
 	private disabled = false;
 
 	constructor(private readonly options: TelemetryClientOptions) {
-		this.endpoint = options.endpoint ?? process.env.PRIME_AGENT_TELEMETRY_ENDPOINT ?? DEFAULT_TELEMETRY_ENDPOINT;
+		this.endpoint = options.endpoint ?? process.env.PROMETH_TELEMETRY_ENDPOINT ?? "";
+		this.disabled = this.endpoint.trim().length === 0;
 		this.fetchImpl = options.fetch ?? fetch;
 		this.now = options.now ?? Date.now;
 		this.randomId = options.randomId ?? randomUUID;
@@ -415,7 +418,7 @@ export class TelemetryClient implements TelemetrySink {
 				method: "POST",
 				headers: {
 					"content-type": "application/json",
-					"user-agent": `prime-agent/${VERSION}`,
+					"user-agent": `prometh/${VERSION}`,
 				},
 				body: JSON.stringify(batch),
 				signal: AbortSignal.timeout(this.requestTimeoutMs),

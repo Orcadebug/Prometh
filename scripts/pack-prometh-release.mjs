@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// TODO: Remove this R2 tarball packer once prime-agent and its internal workspace
+// TODO: Remove this R2 tarball packer once prometh and its internal workspace
 // dependencies are published through a real npm release flow.
 
 import { spawnSync } from "node:child_process";
@@ -21,14 +21,14 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const defaultOutputDir = join(root, "packages", "coding-agent", "release");
 const defaultBaseUrl = process.env.PRIME_AGENT_DOWNLOAD_BASE_URL;
-const publicPackageName = process.env.PRIME_AGENT_PACKAGE_NAME || "prime-agent";
-const publicCommandName = process.env.PRIME_AGENT_CMD || "prime-agent";
+const publicPackageName = process.env.PRIME_AGENT_PACKAGE_NAME || "prometh";
+const publicCommandName = process.env.PRIME_AGENT_CMD || "prometh";
 const releaseChannels = new Set(["stable", "beta"]);
 
 const releasePackages = [
-	{ packageDir: "ai", publicName: undefined, artifactName: "prime-agent-ai" },
-	{ packageDir: "tui", publicName: undefined, artifactName: "prime-agent-tui" },
-	{ packageDir: "agent", publicName: undefined, artifactName: "prime-agent-core" },
+	{ packageDir: "ai", publicName: undefined, artifactName: "prometh-ai" },
+	{ packageDir: "tui", publicName: undefined, artifactName: "prometh-tui" },
+	{ packageDir: "agent", publicName: undefined, artifactName: "prometh-core" },
 	{ packageDir: "coding-agent", publicName: publicPackageName, artifactName: publicPackageName },
 ];
 
@@ -92,14 +92,14 @@ function parseArgs(args) {
 }
 
 function printHelp() {
-	console.log(`Usage: node scripts/pack-prime-agent-release.mjs --base-url url [--channel stable|beta] [--version x.y.z] [--out-dir path]
+	console.log(`Usage: node scripts/pack-prometh-release.mjs --base-url url [--channel stable|beta] [--version x.y.z] [--out-dir path]
 
 Creates private npm tarballs for R2 distribution:
 
-  <out-dir>/artifacts/prime-agent-<version>.tgz
-  <out-dir>/artifacts/prime-agent-ai-<version>.tgz
-  <out-dir>/artifacts/prime-agent-core-<version>.tgz
-  <out-dir>/artifacts/prime-agent-tui-<version>.tgz
+  <out-dir>/artifacts/prometh-<version>.tgz
+  <out-dir>/artifacts/prometh-ai-<version>.tgz
+  <out-dir>/artifacts/prometh-core-<version>.tgz
+  <out-dir>/artifacts/prometh-tui-<version>.tgz
   <out-dir>/artifacts/SHA256SUMS
   <out-dir>/artifacts/<channel>
   <out-dir>/artifacts/latest.json (stable) or beta.json (beta)

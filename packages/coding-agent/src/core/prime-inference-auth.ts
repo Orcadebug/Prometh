@@ -17,8 +17,8 @@ import type { OAuthAuthInfo } from "@earendil-works/pi-ai";
 
 export const PRIME_INFERENCE_PROVIDER_ID = "prime-inference";
 export const PRIME_INFERENCE_PROVIDER_NAME = "Prime Inference";
-export const PRIME_AGENT_TRACES_PROVIDER_ID = "prime-agent-traces";
-export const PRIME_AGENT_TRACES_PROVIDER_NAME = "Prime Agent Traces";
+export const PROMETH_TRACES_PROVIDER_ID = "prometh-traces";
+export const PROMETH_TRACES_PROVIDER_NAME = "Prometh Traces";
 
 const DEFAULT_PRIME_API_BASE_URL = "https://api.primeintellect.ai";
 const DEFAULT_PRIME_FRONTEND_URL = "https://app.primeintellect.ai";
@@ -237,14 +237,14 @@ export function savePrimeCliTeamSelection(
 	return loadPrimeCliConfig(configPath);
 }
 
-export function resolvePrimeAgentTracesBaseUrl(baseUrl?: string): string {
-	return normalizeBaseUrl(baseUrl ?? stringEnv("PRIME_AGENT_TRACES_BASE_URL"));
+export function resolvePromethTracesBaseUrl(baseUrl?: string): string {
+	return normalizeBaseUrl(baseUrl ?? stringEnv("PROMETH_TRACES_BASE_URL"));
 }
 
-function resolvePrimeAgentTracesChallengeConfig(config: PrimeCliConfig): PrimeChallengeConfig {
+function resolvePromethTracesChallengeConfig(config: PrimeCliConfig): PrimeChallengeConfig {
 	return {
-		baseUrl: resolvePrimeAgentTracesBaseUrl(),
-		frontendUrl: stringEnv("PRIME_AGENT_TRACES_BASE_URL") ? config.frontendUrl : DEFAULT_PRIME_FRONTEND_URL,
+		baseUrl: resolvePromethTracesBaseUrl(),
+		frontendUrl: stringEnv("PROMETH_TRACES_BASE_URL") ? config.frontendUrl : DEFAULT_PRIME_FRONTEND_URL,
 	};
 }
 
@@ -624,7 +624,7 @@ export async function checkPrimeInferenceAccess(
 	return checkPrimeScopeAccess(apiKey, baseUrl, "inference", "inference", options);
 }
 
-export async function checkPrimeAgentTracesAccess(
+export async function checkPromethTracesAccess(
 	apiKey: string,
 	baseUrl: string,
 	options: {
@@ -684,19 +684,19 @@ export async function loginPrimeInference(
 	return { apiKey, source: "browser" };
 }
 
-export async function loginPrimeAgentTraces(
+export async function loginPromethTraces(
 	callbacks: PrimeInferenceLoginCallbacks,
 	options: PrimeInferenceLoginOptions = {},
 ): Promise<PrimeInferenceLoginResult> {
 	const config = loadPrimeCliConfig(options.configPath);
-	const traceConfig = resolvePrimeAgentTracesChallengeConfig(config);
+	const traceConfig = resolvePromethTracesChallengeConfig(config);
 	const fetchFn = options.fetchFn ?? fetch;
 	const requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
 	const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
 
 	if (config.apiKey) {
 		callbacks.onProgress?.("Checking existing Prime CLI credentials...");
-		const access = await checkPrimeAgentTracesAccess(config.apiKey, traceConfig.baseUrl, {
+		const access = await checkPromethTracesAccess(config.apiKey, traceConfig.baseUrl, {
 			fetchFn,
 			requestTimeoutMs,
 			signal: callbacks.signal,
@@ -706,7 +706,7 @@ export async function loginPrimeAgentTraces(
 			return { apiKey: config.apiKey, source: "prime-cli" };
 		}
 		callbacks.onProgress?.(
-			`Existing Prime CLI key cannot upload Prime Agent traces (${formatAccessFailure(access)}). Starting browser login...`,
+			`Existing Prime CLI key cannot upload Prometh traces (${formatAccessFailure(access)}). Starting browser login...`,
 		);
 	} else {
 		callbacks.onProgress?.("No Prime CLI API key found. Starting browser login...");
@@ -721,14 +721,14 @@ export async function loginPrimeAgentTraces(
 		"agent_traces",
 	);
 	throwIfCancelled(callbacks.signal);
-	callbacks.onProgress?.("Checking Prime Agent trace access...");
-	const access = await checkPrimeAgentTracesAccess(apiKey, traceConfig.baseUrl, {
+	callbacks.onProgress?.("Checking Prometh trace access...");
+	const access = await checkPromethTracesAccess(apiKey, traceConfig.baseUrl, {
 		fetchFn,
 		requestTimeoutMs,
 		signal: callbacks.signal,
 	});
 	if (!access.ok) {
-		throw new Error(`Prime API key does not have Prime Agent trace access (${formatAccessFailure(access)})`);
+		throw new Error(`Prime API key does not have Prometh trace access (${formatAccessFailure(access)})`);
 	}
 
 	throwIfCancelled(callbacks.signal);

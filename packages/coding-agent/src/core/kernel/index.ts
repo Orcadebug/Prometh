@@ -162,7 +162,7 @@ export interface KernelManagerOptions {
 	pythonSkills?: readonly KernelPythonSkill[];
 	/** Persist/revive the user namespace across kernel restarts and session resume. */
 	snapshot?: KernelSnapshotConfig;
-	/** Default: "prime-agent". */
+	/** Default: "prometh". */
 	username?: string;
 }
 
@@ -183,13 +183,13 @@ export interface ExecuteOptions {
 }
 
 /** MIME tag the `edit` skill emits diff payloads under, via `display_data`. */
-export const DIFF_DISPLAY_MIME = "application/vnd.prime-agent.diff+json";
+export const DIFF_DISPLAY_MIME = "application/vnd.prometh.diff+json";
 
 /** MIME tag the `attach-image` skill emits media payloads under, via `display_data`. */
-export const ATTACHMENT_DISPLAY_MIME = "application/vnd.prime-agent.attachment+json";
+export const ATTACHMENT_DISPLAY_MIME = "application/vnd.prometh.attachment+json";
 
 /** MIME tag the `agent-message` skill emits after sending a message. */
-export const AGENT_MESSAGE_DISPLAY_MIME = "application/vnd.prime-agent.agent-message+json";
+export const AGENT_MESSAGE_DISPLAY_MIME = "application/vnd.prometh.agent-message+json";
 
 /**
  * Hard ceiling on a single attachment's base64 payload, a defensive guard
@@ -537,7 +537,7 @@ function makeConnection(): { info: ConnectionInfo; path: string; tempDir: string
 		key: randomBytes(16).toString("hex"),
 		kernel_name: "python3",
 	};
-	const tempDir = mkdtempSync(join(tmpdir(), "prime-agent-kernel-"));
+	const tempDir = mkdtempSync(join(tmpdir(), "prometh-kernel-"));
 	const path = join(tempDir, "connection.json");
 	writeFileSync(path, JSON.stringify(info, null, 2), { mode: 0o600 });
 	return { info, path, tempDir };
@@ -631,7 +631,7 @@ export class KernelManager {
 			hostHandlers: options.hostHandlers,
 			pythonSkills: options.pythonSkills,
 			snapshot: options.snapshot,
-			username: options.username ?? "prime-agent",
+			username: options.username ?? "prometh",
 		};
 	}
 

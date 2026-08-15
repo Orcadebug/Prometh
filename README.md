@@ -1,108 +1,137 @@
-<p align="center">
-  <a href="https://primeintellect.ai">
-    <picture>
-      <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/40c36e38-c5bd-4c5a-9cb3-f7b902cd155d">
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/6414bc9b-126b-41ca-9307-9e982430cde8">
-      <img alt="Prime Intellect" src="https://github.com/user-attachments/assets/6414bc9b-126b-41ca-9307-9e982430cde8" width="312" style="max-width: 100%;">
-    </picture>
-  </a>
-</p>
+# Prometh
 
-<h3 align="center">
-Prime Agent: A Self-Improving RLM Agent
-</h3>
+**Prometh** is an RLM-native terminal coding and research agent built around a persistent IPython kernel, recursive subagents, durable sessions, and a multi-process local runtime. It is a hard fork of [Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent) (MIT), originally descended from [pi-mono](https://github.com/badlogic/pi-mono).
 
-<p align="center">
-  <a href="packages/coding-agent/docs/index.md">Documentation</a> &bull;
-  <a href="https://github.com/PrimeIntellect-ai/verifiers">Verifiers</a> &bull;
-  <a href="https://github.com/PrimeIntellect-ai/prime-rl">PRIME-RL</a> &bull;
-  <a href="https://github.com/badlogic/pi-mono">pi-mono</a>
-</p>
+Its signature capability is **compute-driven discovery** — the agent learns by doing: it proposes candidates, executes real computational jobs, observes objective results, preserves what works *and* what surprises, and uses those observations to decide what to try next.
 
-<p align="center">
-  <a href="https://github.com/PrimeIntellect-ai/prime-agent/actions/workflows/ci.yml">
-    <img src="https://github.com/PrimeIntellect-ai/prime-agent/actions/workflows/ci.yml/badge.svg" alt="CI" />
-  </a>
-  <a href="https://github.com/PrimeIntellect-ai/prime-agent/actions/workflows/build-binaries.yml">
-    <img src="https://github.com/PrimeIntellect-ai/prime-agent/actions/workflows/build-binaries.yml/badge.svg" alt="Build Binaries" />
-  </a>
-</p>
-
-Prime Agent is an open-source coding and research agent for general and long-running work. It is designed around two core abstractions:
-
-- The **[Recursive Language Model (RLM)](https://www.primeintellect.ai/blog/rlm)** treats context as variables (*prompt-as-a-variable*) and tools like recursive subagents as function calls (*programmatic tool /sub-agent calling*) inside a persistent REPL.
-- The **[Continual Harness](https://arxiv.org/abs/2605.09998)** stores supplemental prompts, memories, skill descriptions, and reusable subagent specifications as durable state that Prime Agent can refine through small, evidence-backed updates, local to the session by default.
-
-Prime Agent combines a persistent Python control environment with durable harness state, so useful working context and reusable operating patterns can outlive a single chat window.
-
-- **Everything is programmatic:** persistent IPython is the built-in model tool; file operations, shell commands, tool use, subagents, and context management happen through code.
-- **Subagents are built in:** `rlm(...)` spawns real child agents for parallel or background work and returns their results programmatically.
-- **The harness can improve:** `/refine` reviews the current trajectory and can apply small, evidence-backed updates to supplemental harness state. It never rewrites the immutable base system prompt, and recorded snapshots support rollback.
-- **Skills are executable:** skills are importable Python packages, and the built-in skill creator can turn recurring workflows into project or personal skills.
-- **Sessions run in the background:** daemon-backed agents keep running when the terminal disconnects and can be reattached later.
-- **Agents communicate directly:** running agents can exchange messages and orchestrate one another without routing everything through the user.
-- **Long tasks keep moving:** automatic compaction, persistent goals, heartbeats, schedules, autonomous mode, and retained subagents preserve progress across turns and terminal sessions.
-
-## Getting Started
-
-Install the latest stable release on macOS or Linux:
-
-```bash
-curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh | sh
+```text
+propose -> execute -> observe -> preserve -> reinterpret -> propose again
 ```
 
-The installer downloads a versioned release, verifies its SHA-256 checksum, installs the `prime-agent` command, and can prepare the IPython runtime used by the agent.
+## Quick Start
 
-Start Prime Agent from the repository or directory you want it to work in:
+Clone and run:
 
 ```bash
-cd /path/to/project
-prime-agent
+git clone https://github.com/Orcadebug/Prometh.git
+cd Prometh
+npm install
+./prometh.sh
 ```
 
-On first launch, run `/login` to choose a subscription or API-key provider. Prime Agent works in the current directory and can run commands and modify files there. Use a disposable clone, clean worktree, or another checkpoint you can inspect and restore.
+Or install from the release installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Orcadebug/Prometh/main/install.sh | sh
+prometh
+```
+
+Then authenticate with `/login` or set an environment variable such as `ANTHROPIC_API_KEY` before launch.
+
+**Requirements:** Node.js 22.8+, npm, and (for Python skills) `uv` or an existing Python 3.11+ environment with `ipykernel`.
 
 > [!WARNING]
-> Prime Agent executes model-generated Python and project commands with your user permissions. Its worker and kernel processes improve lifecycle isolation and recovery; they are **not** a security sandbox. Review changes and use trusted repositories, instructions, skills, and extensions only. Run untrusted code or instructions in an external sandbox or restricted environment.
+> Prometh executes model-generated Python and project commands with your user permissions. Its worker and kernel processes improve lifecycle isolation and recovery; they are **not** a security sandbox. Review changes and use trusted repositories, instructions, skills, and extensions only.
 
-Useful commands:
+## Compute-Driven Discovery
 
-```bash
-prime-agent agents                   # Browse running, idle, and saved sessions
-prime-agent attach <agent>           # Reattach to a running session
-prime-agent --resume [path|id]       # Browse sessions or resume one directly
-prime-agent status                   # Inspect background service state
-prime-agent doctor [--fix]           # Inspect or repair background services
-prime-agent update [--force]         # Update Prime Agent
-prime-agent shutdown [--force]       # Stop every agent, worker, and background service
+The headline feature of this fork. Prometh doesn't get smarter just because compute is available — it turns execution into experience.
+
+### The loop
+
+1. **Create a campaign** with an objective and explicit budgets.
+2. **Set a baseline** — a passing exit code is not evidence of improvement.
+3. **Propose candidates** with hypotheses, predicted metrics, operators, and lineage.
+4. **Execute real jobs** through the bounded compute subsystem (local subprocesses by default; optional Kaggle CLI backend).
+5. **Observe results** — parsed via a machine-readable result protocol, never stuffed raw into context.
+6. **Preserve** the best, the novel, the surprising, and the informatively failing candidates in four additive archives. Losers are never deleted.
+7. **Replicate winners** across seeds, then **complete** only when evidence is strong.
+
+```python
+# From IPython
+campaign = await discovery.create(
+    objective="Reduce latency while preserving correctness",
+    budgets={"max_compute_jobs": 200, "max_wall_time_ms": 6 * 3600 * 1000},
+)
+await discovery.set_baseline(campaign["campaign"]["id"], metrics={"latency_ms": 142})
+
+candidate = await discovery.add_candidate(
+    campaign["campaign"]["id"],
+    hypothesis="Closed-form arithmetic removes the loop entirely",
+    intervention={"command": "python bench.py fast_sum", "files": [{"path": "bench.py", "content": "..."}]},
+    predicted_metrics={"latency_ms": 5},
+    operators=["change_representation"],
+)
+
+await discovery.replicate(campaign["campaign"]["id"], candidate["experience"]["id"], seeds=[1, 2, 3])
+summary = await discovery.summarize(campaign["campaign"]["id"])
+await discovery.complete(campaign["campaign"]["id"])
 ```
 
-## Built for Long-Running Work
-Prime Agent is built for long-running work, especially for evaluations in research. These features are available in the TUI, and when run autonomously.
+Validated discoveries can be persisted as reusable lessons through `/refine`, with machine-readable provenance (`source: "discovery"`, campaign id, experience ids, replication count, validation status). One lucky run never becomes global harness state.
 
-- **Continual Harness:** `/refine` can persist focused, reviewable lessons as supplemental prompts, memories, reusable skill descriptions, or subagent specifications, with recorded refinement history. It does not replace packaging and reviewing new executable skills.
-- **Direct agent-to-agent communication:** running agents and retained subagents can discover one another, exchange messages, and steer active work.
-- **Daemon-backed continuity:** active sessions, IPython state, schedules, and subagents keep running when the terminal detaches and can be reattached later.
-- **Heartbeats and schedules:** `/heartbeat`, `rlm_heartbeat`, and `prime-agent schedule` can re-enter a session periodically or at a specific time.
-- **Persistent goals:** `/goal` keeps an objective and its progress active across turns until it is completed, paused, or cleared.
-- **Bounded autonomous mode:** `/autonomous` continues within configured turn, token, and time budgets and can run user-defined quality gates. A passed gate checks only what that gate verifies; reaching a limit does not imply task success.
+### The compute subsystem
+
+- **Bounded local backend** — wall-clock timeouts, output-size caps, concurrency limits, cancellation, per-job working directories.
+- **Optional Kaggle backend** — orchestrates kernel scripts through the official Kaggle CLI when installed and authenticated; degrades cleanly otherwise. No credentials are hard-coded or logged.
+- **Disposable git worktrees** — repository-changing experiments can request `isolation: "worktree"` so parallel candidates never corrupt the same checkout.
+- **Durable job state** — every job has a durable id and survives session continuation under the session artifact directory.
+- **Result protocol** — experiments emit `{"prime_discovery_result": {"metrics": {...}, "valid": true}}` on stdout or into a result file; the host parses it into searchable metrics.
+
+### `compute` skill
+
+```python
+job = await compute.submit("python bench.py --variant A", timeout_ms=120000)
+result = await compute.result(job["job"]["jobId"])
+budget = await compute.budget()
+```
+
+### `/discovery` command
+
+```text
+/discovery start <objective>
+/discovery status
+/discovery pause <campaign-id>
+/discovery resume <campaign-id>
+/discovery stop <campaign-id>
+```
+
+### Autonomous mode
+
+Active campaigns within budget produce bounded continuation turns in autonomous mode; exhausted campaigns stop cleanly. Existing autonomous limits (continuations, turns, tokens, wall clock, quality gates) remain authoritative.
+
+Read the full design document: [packages/coding-agent/docs/compute-discovery.md](packages/coding-agent/docs/compute-discovery.md).
+Run the end-to-end demo (no GPU, no API keys): `cd packages/coding-agent && npx tsx examples/compute-discovery-demo.ts`.
+
+## What Prometh Keeps From Its Base
+
+- A persistent **IPython kernel** as the model-facing environment; Python-backed skills over the typed `rlm.host_request` bridge.
+- **RLM child agents** for independent delegated work.
+- Durable **sessions** with branching, compaction, and tree navigation.
+- **Slash commands** (`/goal`, `/refine`, `/autonomous`, `/heartbeat`, …), prompt templates, skills, extensions, themes, MCP integrations.
+- **Continual harness** (`/refine`) for persistent memories, skills, subagent specs, and prompt notes.
+- **Long-running work**: daemon-backed background agents, direct agent-to-agent messaging, heartbeats, schedules, persistent goals, bounded autonomous mode.
 
 ## Documentation
 
-- [Quickstart](packages/coding-agent/docs/quickstart.md) — install, authenticate, and run a first session
-- [Usage and CLI reference](packages/coding-agent/docs/usage.md) — commands, sessions, autonomous limits, and output modes
-- [Long-running and background agents](packages/coding-agent/docs/long-running-agents.md) — detach and reattach, goals, heartbeats, and schedules
-- [RLM programming model](packages/coding-agent/docs/rlm.md) — persistent IPython, subagents, skills, and the trust model
-- [JSON mode](packages/coding-agent/docs/json.md) and [RPC mode](packages/coding-agent/docs/rpc.md) — headless automation and integrations
-- [Skills](packages/coding-agent/docs/skills.md) — install and create reusable capabilities
-- [Provider setup](packages/coding-agent/docs/providers.md) — subscription and API-key providers
-- [Architecture overview](packages/coding-agent/docs/architecture.md) — daemon, worker, kernel, and persistence boundaries
-- [Development](packages/coding-agent/docs/development.md) — build and run from source
+- [Full docs index](packages/coding-agent/docs/index.md)
+- [Compute-driven discovery](packages/coding-agent/docs/compute-discovery.md)
+- [Quickstart](packages/coding-agent/docs/quickstart.md)
+- [Usage and CLI reference](packages/coding-agent/docs/usage.md)
+- [RLM programming model](packages/coding-agent/docs/rlm.md)
+- [Long-running and background agents](packages/coding-agent/docs/long-running-agents.md)
+
+## Development
+
+```bash
+npm run check   # format, lint, typecheck
+./test.sh       # run the test suite
+```
 
 ## Acknowledgements
 
-Our agent and TUI is built on top of [`pi`](https://github.com/earendil-works/pi). We thank the authors of `pi` for their valuable work.
+Prometh is a fork of [Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent) by Prime Intellect, which is itself built on [`pi`](https://github.com/earendil-works/pi) and [pi-mono](https://github.com/badlogic/pi-mono). We thank the authors of `pi` and Prime Agent for their valuable work.
 
 ## License
 
-Prime Agent is fully open source and released under the [MIT License](LICENSE).
+MIT. Prometh is a fork of [Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent) (Copyright (c) 2025 Mario Zechner, Copyright (c) 2026 Prime Intellect), descended from [pi-mono](https://github.com/badlogic/pi-mono). All original license and attribution remain intact. Prometh-specific changes are Copyright (c) 2026 Orca and contributors, under the same MIT license.

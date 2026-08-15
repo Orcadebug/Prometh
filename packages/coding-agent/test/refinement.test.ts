@@ -56,7 +56,7 @@ afterEach(() => {
 });
 
 function makeTempDir(): string {
-	tempDir = mkdtempSync(join(tmpdir(), "prime-agent-refinement-test-"));
+	tempDir = mkdtempSync(join(tmpdir(), "prometh-refinement-test-"));
 	return tempDir;
 }
 
@@ -710,7 +710,7 @@ describe("harness refinement", () => {
 			},
 			{
 				type: "custom",
-				customType: "prime-agent.refinement",
+				customType: "prometh.refinement",
 				data: result,
 				id: "custom_2",
 				parentId: "custom_1",
@@ -718,7 +718,7 @@ describe("harness refinement", () => {
 			},
 			{
 				type: "custom",
-				customType: "prime-agent.refinement",
+				customType: "prometh.refinement",
 				data: { id: "malformed" },
 				id: "custom_malformed",
 				parentId: "custom_2",

@@ -499,7 +499,7 @@ describe("skills", () => {
 		});
 
 		it("should warn when Python skills share an import name", () => {
-			const tempDir = mkdtempSync(join(tmpdir(), "prime-agent-skills-"));
+			const tempDir = mkdtempSync(join(tmpdir(), "prometh-skills-"));
 			try {
 				writePythonSkill(tempDir, "web-search");
 				writePythonSkill(tempDir, "web_search");

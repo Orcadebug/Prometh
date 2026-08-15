@@ -1,4 +1,4 @@
-"""Shared CLI helpers for Prime Agent Python skills."""
+"""Shared CLI helpers for Prometh Python skills."""
 
 from __future__ import annotations
 

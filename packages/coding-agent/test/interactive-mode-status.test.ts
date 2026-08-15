@@ -3868,12 +3868,12 @@ describe("InteractiveMode post-login model preparation", () => {
 describe("InteractiveMode splash cwd display", () => {
 	test("formats home-relative cwd paths", () => {
 		expect(formatSplashCwd(homedir())).toBe("~");
-		expect(formatSplashCwd(path.join(homedir(), "pi", "prime-agent"))).toBe("~/pi/prime-agent");
+		expect(formatSplashCwd(path.join(homedir(), "pi", "prometh"))).toBe("~/pi/prometh");
 	});
 
 	test("keeps worktree paths as cwd paths instead of repo branch labels", () => {
-		expect(formatSplashCwd(path.join(homedir(), "pi", "prime-agent", ".worktrees", "improve-onboarding"))).toBe(
-			"~/pi/prime-agent/.worktrees/improve-onboarding",
+		expect(formatSplashCwd(path.join(homedir(), "pi", "prometh", ".worktrees", "improve-onboarding"))).toBe(
+			"~/pi/prometh/.worktrees/improve-onboarding",
 		);
 	});
 });

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Renamed the product to Prometh: rebranded the CLI command, launcher, config directory (`~/.prometh`), environment variables, docs, and installer; version checks and analytics are now opt-in with no default upstream endpoints.
 - Added compute-driven discovery: bounded compute jobs (local subprocess and optional Kaggle CLI backends) and persistent discovery campaigns with lineage, elite/novelty/surprise/failure archives, baselines, replication, budgets, and a `/discovery` slash command, exposed to IPython through the new `compute` and `discovery` skills.
 - Fixed fullscreen wheel scrolling in Ghostty while retaining application link clicks; set `terminal.fullscreenMouse` to `false` to use native Cmd-click instead.
 - Changed the agents view to sort idle and inactive sessions by last message time, newest first, while keeping running agents in stable creation order.

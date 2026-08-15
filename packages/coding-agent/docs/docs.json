@@ -16,7 +16,7 @@
           "path": "architecture.md"
         },
         {
-          "title": "Using Prime Agent",
+          "title": "Using Prometh",
           "path": "usage.md"
         },
         {
@@ -77,7 +77,7 @@
           "path": "themes.md"
         },
         {
-          "title": "Prime Agent Packages",
+          "title": "Prometh Packages",
           "path": "packages.md"
         },
         {

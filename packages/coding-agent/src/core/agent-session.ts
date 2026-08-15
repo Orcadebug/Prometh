@@ -8106,7 +8106,7 @@ export class AgentSession {
 			if (targetScope === "global") {
 				appendGlobalRefinement(globalHarnessStateDir, result);
 			}
-			this.sessionManager.appendCustomEntry("prime-agent.refinement", result);
+			this.sessionManager.appendCustomEntry("prometh.refinement", result);
 			this._baseSystemPrompt = this._rebuildSystemPrompt(this.getActiveToolNames());
 			this.agent.state.systemPrompt = this._baseSystemPrompt;
 			try {
@@ -9097,7 +9097,7 @@ export class AgentSession {
 
 	private _addWebsearchKeyEnv(env: Record<string, string>): void {
 		if (this._agentDir) {
-			env.PRIME_AGENT_CODING_AGENT_DIR = this._agentDir;
+			env.PROMETH_CODING_AGENT_DIR = this._agentDir;
 		}
 
 		if (process.env[SERPER_ENV_VAR]?.trim()) {
@@ -9155,7 +9155,7 @@ export class AgentSession {
 	}
 
 	private _createEphemeralRlmSessionDir(): string {
-		this._rlmSessionDir = mkdtempSync(join(tmpdir(), "prime-agent-rlm-"));
+		this._rlmSessionDir = mkdtempSync(join(tmpdir(), "prometh-rlm-"));
 		return this._rlmSessionDir;
 	}
 

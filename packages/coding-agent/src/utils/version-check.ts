@@ -1,6 +1,8 @@
 import { getPiUserAgent } from "./pi-user-agent.js";
 
-const DEFAULT_PRIME_AGENT_DOWNLOAD_BASE_URL = "https://pub-728493de92a943e2a9b2d17b4719f318.r2.dev";
+// Prometh has no release bucket yet; version checks are disabled until
+// PROMETH_DOWNLOAD_BASE_URL is configured for a release pipeline.
+const DEFAULT_PROMETH_DOWNLOAD_BASE_URL = "";
 const STABLE_VERSION_MANIFEST_PATH = "latest.json";
 const BETA_VERSION_MANIFEST_PATH = "beta.json";
 const DEFAULT_VERSION_CHECK_TIMEOUT_MS = 10000;
@@ -85,11 +87,8 @@ export function isNewerPackageVersion(candidateVersion: string, currentVersion: 
 	return candidateVersion.trim() !== currentVersion.trim();
 }
 
-function getPrimeAgentDownloadBaseUrl(): string {
-	return (process.env.PRIME_AGENT_DOWNLOAD_BASE_URL?.trim() || DEFAULT_PRIME_AGENT_DOWNLOAD_BASE_URL).replace(
-		/\/+$/,
-		"",
-	);
+function getPromethDownloadBaseUrl(): string {
+	return (process.env.PROMETH_DOWNLOAD_BASE_URL?.trim() || DEFAULT_PROMETH_DOWNLOAD_BASE_URL).replace(/\/+$/, "");
 }
 
 function normalizeReleaseVersion(version: string): string {
@@ -117,7 +116,8 @@ export async function getLatestPiRelease(
 ): Promise<LatestPiRelease | undefined> {
 	if (process.env.PI_SKIP_VERSION_CHECK || process.env.PI_OFFLINE) return undefined;
 
-	const baseUrl = getPrimeAgentDownloadBaseUrl();
+	const baseUrl = getPromethDownloadBaseUrl();
+	if (!baseUrl) return undefined;
 	const response = await fetch(`${baseUrl}/${getReleaseManifestPath(currentVersion)}`, {
 		headers: {
 			"User-Agent": getPiUserAgent(currentVersion),

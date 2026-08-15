@@ -89,7 +89,7 @@ export class KaggleComputeBackend implements ComputeBackend {
 		}
 		const job: KaggleJob = {
 			id: `job_${randomUUID().replaceAll("-", "").slice(0, 16)}`,
-			slug: `prime-agent-${randomUUID().replaceAll("-", "").slice(0, 12)}`,
+			slug: `prometh-${randomUUID().replaceAll("-", "").slice(0, 12)}`,
 			request,
 			status: "pending",
 			startedAt: new Date().toISOString(),
@@ -107,7 +107,7 @@ export class KaggleComputeBackend implements ComputeBackend {
 			const datasetSources = job.request.metadata?.kaggle_dataset_sources;
 			const metadata: Record<string, unknown> = {
 				id: job.slug,
-				title: job.request.label ?? "prime-agent compute job",
+				title: job.request.label ?? "prometh compute job",
 				code_file: "run.py",
 				language: "python",
 				kernel_type: "script",

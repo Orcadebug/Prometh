@@ -8,8 +8,8 @@ export {
 	acpToolKind,
 	acpUpdatesForSessionEvent,
 	bashToolCallId,
-	PRIME_AGENT_META_NAMESPACE,
-	primeAgentMeta,
+	PROMETH_META_NAMESPACE,
+	promethMeta,
 	runAcpMode,
 	runAcpModeWithConnection,
 } from "./acp/index.js";

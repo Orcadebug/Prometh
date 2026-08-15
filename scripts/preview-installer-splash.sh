@@ -32,20 +32,20 @@ case "$frames" in
 		;;
 esac
 
-preview_dir=$(mktemp -d "${TMPDIR:-/tmp}/prime-agent-splash-preview.XXXXXX")
+preview_dir=$(mktemp -d "${TMPDIR:-/tmp}/prometh-splash-preview.XXXXXX")
 preview_file="$preview_dir/preview.sh"
 
 sed '/^main "\$@"$/,$d' "$installer" >"$preview_file"
 cat >>"$preview_file" <<'EOF'
 
-prime_agent_screen_enabled=1
+prometh_screen_enabled=1
 
 preview_restore_terminal() {
-	prime_agent_restore_terminal
+	prometh_restore_terminal
 }
 
 preview_signal_cleanup() {
-	prime_agent_restore_terminal
+	prometh_restore_terminal
 	exit "$1"
 }
 
@@ -55,7 +55,7 @@ trap 'preview_signal_cleanup 143' TERM
 
 i=0
 while [ "$i" -lt "$1" ]; do
-	prime_agent_screen "Installing Prime Agent" "Downloading Prime Agent$(prime_agent_pulse)" "Fetching the verified package." ""
+	prometh_screen "Installing Prometh" "Downloading Prometh$(prometh_pulse)" "Fetching the verified package." ""
 	sleep 0.18
 	i=$((i + 1))
 done

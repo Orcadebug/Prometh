@@ -1,8 +1,8 @@
-"""Prime Agent discovery skill: compute-driven discovery campaigns.
+"""Prometh discovery skill: compute-driven discovery campaigns.
 
 Campaign state, budgets, lineage, and archives live in the TypeScript host;
 these functions are thin typed wrappers over the generic host bridge
-(`rlm.host_request`). They only work inside the Prime Agent IPython kernel.
+(`rlm.host_request`). They only work inside the Prometh IPython kernel.
 """
 
 from __future__ import annotations

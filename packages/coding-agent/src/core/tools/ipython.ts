@@ -23,30 +23,30 @@ import { wrapToolDefinition } from "./tool-definition-wrapper.js";
 
 const RLM_BOOTSTRAP_BASE_CODE = `
 import asyncio
-import os as _prime_agent_os
+import os as _prometh_os
 
-_prime_agent_os.environ["NO_COLOR"] = "1"
+_prometh_os.environ["NO_COLOR"] = "1"
 get_ipython().colors = "nocolor"
 
 try:
-    import nest_asyncio as _prime_agent_nest_asyncio
-    _prime_agent_nest_asyncio.apply()
+    import nest_asyncio as _prometh_nest_asyncio
+    _prometh_nest_asyncio.apply()
 except Exception:
     pass
 
 try:
-    import rlm as _prime_agent_rlm_module
-    rlm = _prime_agent_rlm_module.rlm
-except Exception as _prime_agent_rlm_error:
-    _PRIME_AGENT_RLM_IMPORT_ERROR = str(_prime_agent_rlm_error)
+    import rlm as _prometh_rlm_module
+    rlm = _prometh_rlm_module.rlm
+except Exception as _prometh_rlm_error:
+    _PROMETH_RLM_IMPORT_ERROR = str(_prometh_rlm_error)
 
-    class _PrimeAgentMissingRlm:
+    class _PromethMissingRlm:
         def _raise_missing(self):
             raise RuntimeError(
-                "prime-agent-runtime is not installed in this IPython kernel. "
-                "Remove ~/.prime/agent/kernel-venv so prime-agent can rebuild it, or set "
-                "PRIME_AGENT_KERNEL_PYTHON to a kernel environment with prime-agent-runtime installed. "
-                f"Import error: {_PRIME_AGENT_RLM_IMPORT_ERROR}"
+                "prometh-runtime is not installed in this IPython kernel. "
+                "Remove ~/.prometh/kernel-venv so prometh can rebuild it, or set "
+                "PROMETH_KERNEL_PYTHON to a kernel environment with prometh-runtime installed. "
+                f"Import error: {_PROMETH_RLM_IMPORT_ERROR}"
             )
 
         async def run(self, prompt, **kwargs):
@@ -64,7 +64,7 @@ except Exception as _prime_agent_rlm_error:
         async def __call__(self, prompt, **kwargs):
             return await self.run(prompt, **kwargs)
 
-    rlm = _PrimeAgentMissingRlm()
+    rlm = _PromethMissingRlm()
 `.trim();
 
 export function buildRlmBootstrapCode(pythonSkills: readonly PythonSkillRuntimeInfo[] = []): string {
@@ -76,66 +76,66 @@ export function buildRlmBootstrapCode(pythonSkills: readonly PythonSkillRuntimeI
 	return `
 ${RLM_BOOTSTRAP_BASE_CODE}
 
-import importlib as _prime_agent_importlib
-import inspect as _prime_agent_inspect
-import sys as _prime_agent_sys
-import types as _prime_agent_types
+import importlib as _prometh_importlib
+import inspect as _prometh_inspect
+import sys as _prometh_sys
+import types as _prometh_types
 
-class _PrimeAgentCallableSkillModule(_prime_agent_types.ModuleType):
+class _PromethCallableSkillModule(_prometh_types.ModuleType):
     async def __call__(self, *args, **kwargs):
         result = self.run(*args, **kwargs)
-        if _prime_agent_inspect.isawaitable(result):
+        if _prometh_inspect.isawaitable(result):
             return await result
         return result
 
-class _PrimeAgentUnavailableSkill:
+class _PromethUnavailableSkill:
     def __init__(self, name, error):
         self.__name__ = name
-        self._prime_agent_import_error = error
+        self._prometh_import_error = error
         self.__doc__ = f"Python skill {name} is unavailable: {error}"
 
     async def run(self, *args, **kwargs):
         raise RuntimeError(
             f"Python skill {self.__name__} is unavailable in this IPython kernel. "
-            f"Import error: {self._prime_agent_import_error}"
+            f"Import error: {self._prometh_import_error}"
         )
 
     async def __call__(self, *args, **kwargs):
         return await self.run(*args, **kwargs)
 
     def __repr__(self):
-        return f"<unavailable Python skill {self.__name__!r}: {self._prime_agent_import_error}>"
+        return f"<unavailable Python skill {self.__name__!r}: {self._prometh_import_error}>"
 
-def _prime_agent_wrap_skill_module(module):
+def _prometh_wrap_skill_module(module):
     run = getattr(module, "run", None)
     if not callable(run):
         return module
-    if isinstance(module, _PrimeAgentCallableSkillModule):
+    if isinstance(module, _PromethCallableSkillModule):
         return module
-    wrapped = _PrimeAgentCallableSkillModule(module.__name__)
+    wrapped = _PromethCallableSkillModule(module.__name__)
     wrapped.__dict__.update(module.__dict__)
     try:
-        wrapped.__signature__ = _prime_agent_inspect.signature(run)
+        wrapped.__signature__ = _prometh_inspect.signature(run)
     except Exception:
         pass
     doc = getattr(run, "__doc__", None)
     if doc:
         wrapped.__doc__ = doc
-    _prime_agent_sys.modules[module.__name__] = wrapped
+    _prometh_sys.modules[module.__name__] = wrapped
     return wrapped
 
-_PRIME_AGENT_SKILL_IMPORT_ERRORS = {}
+_PROMETH_SKILL_IMPORT_ERRORS = {}
 
-for _prime_agent_skill_name in ${JSON.stringify(importNames)}:
+for _prometh_skill_name in ${JSON.stringify(importNames)}:
     try:
-        globals()[_prime_agent_skill_name] = _prime_agent_wrap_skill_module(
-            _prime_agent_importlib.import_module(_prime_agent_skill_name)
+        globals()[_prometh_skill_name] = _prometh_wrap_skill_module(
+            _prometh_importlib.import_module(_prometh_skill_name)
         )
-    except Exception as _prime_agent_skill_error:
-        _PRIME_AGENT_SKILL_IMPORT_ERRORS[_prime_agent_skill_name] = str(_prime_agent_skill_error)
-        globals()[_prime_agent_skill_name] = _PrimeAgentUnavailableSkill(
-            _prime_agent_skill_name,
-            str(_prime_agent_skill_error),
+    except Exception as _prometh_skill_error:
+        _PROMETH_SKILL_IMPORT_ERRORS[_prometh_skill_name] = str(_prometh_skill_error)
+        globals()[_prometh_skill_name] = _PromethUnavailableSkill(
+            _prometh_skill_name,
+            str(_prometh_skill_error),
         )
 `.trim();
 }

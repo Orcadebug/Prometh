@@ -1,8 +1,8 @@
-"""Prime Agent compute skill: bounded computational work over the host bridge.
+"""Prometh compute skill: bounded computational work over the host bridge.
 
 All job state, budgets, and lifecycle live in the TypeScript host; these
 functions are thin typed wrappers over the generic host bridge
-(`rlm.host_request`). They only work inside the Prime Agent IPython kernel.
+(`rlm.host_request`). They only work inside the Prometh IPython kernel.
 """
 
 from __future__ import annotations

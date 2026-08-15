@@ -14,7 +14,7 @@ export const DEFAULT_SNAPSHOT_MAX_BYTES = 256 * 1024 * 1024;
 const KERNEL_STATE_BASENAME = "kernel-state";
 
 /** Marker the Python helpers print so the host can recover the JSON result line. */
-const RESULT_MARKER = "__PRIME_AGENT_KERNEL_STATE__";
+const RESULT_MARKER = "__PROMETH_KERNEL_STATE__";
 
 export interface SnapshotResult {
 	/** Top-level names successfully serialized into the payload. */
@@ -57,7 +57,7 @@ export function buildSnapshotCode(outPath: string, manifestPath: string, maxByte
 	// All builtins are sourced via the locally-imported _b alias so the helper keeps
 	// working even when the user namespace shadows names like list/open/print/len.
 	return `
-def _prime_agent_snapshot_state():
+def _prometh_snapshot_state():
     import builtins as _b, json, os, sys, datetime
     try:
         import dill
@@ -132,9 +132,9 @@ def _prime_agent_snapshot_state():
 
 
 try:
-    _prime_agent_snapshot_state()
+    _prometh_snapshot_state()
 finally:
-    del _prime_agent_snapshot_state
+    del _prometh_snapshot_state
 `.trim();
 }
 
@@ -147,7 +147,7 @@ export function buildRestoreCode(inPath: string): string {
 	// Builtins via the local _b alias so a shadowed name in the user namespace
 	// (list/open/print/…) can't break the restore path.
 	return `
-def _prime_agent_restore_state():
+def _prometh_restore_state():
     import builtins as _b, json, os, sys
     if not os.path.exists(${pyStr(inPath)}):
         _b.print(${pyStr(RESULT_MARKER)} + json.dumps({"restored": [], "failed": []}))
@@ -187,16 +187,16 @@ def _prime_agent_restore_state():
 
 
 try:
-    _prime_agent_restore_state()
+    _prometh_restore_state()
 finally:
-    del _prime_agent_restore_state
+    del _prometh_restore_state
 `.trim();
 }
 
 /** Marker-line list of live user-defined names, filtered like the snapshot. Never raises. */
 export function buildListNamesCode(): string {
 	return `
-def _prime_agent_list_state_names():
+def _prometh_list_state_names():
     import builtins as _b, json
     ip = None
     try:
@@ -215,9 +215,9 @@ def _prime_agent_list_state_names():
 
 
 try:
-    _prime_agent_list_state_names()
+    _prometh_list_state_names()
 finally:
-    del _prime_agent_list_state_names
+    del _prometh_list_state_names
 `.trim();
 }
 

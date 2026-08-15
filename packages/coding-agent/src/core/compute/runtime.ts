@@ -338,7 +338,7 @@ export class ComputeRuntime {
 	}
 
 	private _registerBackends(): void {
-		const backendStateDir = this.options.stateDir ?? join(this.options.defaultCwd, ".prime-agent-compute");
+		const backendStateDir = this.options.stateDir ?? join(this.options.defaultCwd, ".prometh-compute");
 		this.backends.set(
 			"local",
 			new LocalComputeBackend({

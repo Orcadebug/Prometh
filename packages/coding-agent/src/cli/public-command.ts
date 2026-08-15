@@ -118,7 +118,7 @@ async function runPublicCommand(args: string[]): Promise<PublicCommandResult> {
 			);
 			if (hasLegacySelfTarget && hasLegacyPackageTarget) {
 				return fail(
-					"Prime Agent and package updates are now separate.",
+					"Prometh and package updates are now separate.",
 					`Run "${APP_NAME} update [--force]" and "${APP_NAME} package update [source]" separately.`,
 				);
 			}
@@ -199,15 +199,15 @@ function rejectRemovedCommand(args: string[]): PublicCommandResult {
 	const [command, subcommand] = args;
 	let replacement: string | undefined;
 	if (command === "daemon") {
-		replacement = 'Run "prime-agent help" to see the agent commands.';
+		replacement = 'Run "prometh help" to see the agent commands.';
 	} else if (command === "app" && subcommand === "update") {
-		replacement = 'Use "prime-agent update".';
+		replacement = 'Use "prometh update".';
 	} else if (command === "install") {
-		replacement = 'Use "prime-agent package install".';
+		replacement = 'Use "prometh package install".';
 	} else if (command === "remove" || command === "uninstall") {
-		replacement = 'Use "prime-agent package remove".';
+		replacement = 'Use "prometh package remove".';
 	} else if (command === "manage") {
-		replacement = 'Use "prime-agent agents".';
+		replacement = 'Use "prometh agents".';
 	}
 	return fail(`Unknown command: ${args.slice(0, 2).join(" ")}`, replacement);
 }
@@ -286,15 +286,13 @@ async function runPackage(args: string[]): Promise<PublicCommandResult> {
 		if (
 			rest.some((arg) => arg === "--self" || arg === "--extensions" || arg === "--extension" || arg === "--force")
 		) {
-			return fail(
-				'Package updates accept only an optional source. Use "prime-agent update --force" to update Prime Agent.',
-			);
+			return fail('Package updates accept only an optional source. Use "prometh update --force" to update Prometh.');
 		}
 		if (rest.length > 1) {
 			return fail(`Usage: ${APP_NAME} package update [source]`);
 		}
 		if (rest[0] && isSelfUpdateSource(rest[0])) {
-			return fail('Use "prime-agent update" to update Prime Agent.');
+			return fail('Use "prometh update" to update Prometh.');
 		}
 		await handlePackageCommand(["update", ...(rest.length === 0 ? ["--extensions"] : rest)]);
 		return HANDLED;

@@ -44,7 +44,7 @@ class NotEnabled(RuntimeError):
         self.server = server
         super().__init__(
             f"The '{server}' integration is not enabled: no credentials found. "
-            f"Tell the user to run `/mcp login {server}` in Prime Agent to connect it. "
+            f"Tell the user to run `/mcp login {server}` in Prometh to connect it. "
             f"Do not ask them to set environment variables."
         )
 
@@ -54,9 +54,9 @@ class McpToolError(RuntimeError):
 
 
 def _agent_dir() -> Path:
-    """Resolve the Prime Agent config dir the same way the rest of the runtime does."""
+    """Resolve the Prometh config dir the same way the rest of the runtime does."""
     raw = (
-        os.environ.get("PRIME_AGENT_CODING_AGENT_DIR")
+        os.environ.get("PROMETH_CODING_AGENT_DIR")
         or os.environ.get("PI_CODING_AGENT_DIR")
         or str(Path.home() / ".prime" / "agent")
     )

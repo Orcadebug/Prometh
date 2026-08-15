@@ -151,8 +151,8 @@ export interface Settings {
 	prompts?: string[]; // Array of local prompt template paths or directories
 	themes?: string[]; // Array of local theme file paths or directories
 	enableSkillCommands?: boolean; // default: true - register skills as /skill:name commands
-	bundledSkills?: BundledSkillsSettings; // Configure built-in skills shipped with Prime Agent
-	enableBuiltinSkills?: boolean; // default: true - load built-in skills shipped with prime-agent
+	bundledSkills?: BundledSkillsSettings; // Configure built-in skills shipped with Prometh
+	enableBuiltinSkills?: boolean; // default: true - load built-in skills shipped with prometh
 	terminal?: TerminalSettings;
 	images?: ImageSettings;
 	enabledModels?: string[]; // Model patterns for cycling (same format as --models CLI flag)
@@ -830,7 +830,9 @@ export class SettingsManager {
 	}
 
 	getTelemetryEnabled(): boolean {
-		const globalEnabled = this.globalSettings.telemetry?.enabled ?? true;
+		// Prometh defaults to opt-out: no analytics unless explicitly enabled.
+		// Project scope defers to the global setting rather than blocking it.
+		const globalEnabled = this.globalSettings.telemetry?.enabled ?? false;
 		const projectEnabled = this.projectSettings.telemetry?.enabled ?? true;
 		const runtimeEnabled = this.runtimeOverrides.telemetry?.enabled ?? true;
 		return globalEnabled && projectEnabled && runtimeEnabled;

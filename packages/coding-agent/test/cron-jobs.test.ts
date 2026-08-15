@@ -1492,7 +1492,7 @@ function makeStorePath(tempDirs: string[]): string {
 }
 
 function makeTempDir(tempDirs: string[]): string {
-	const dir = mkdtempSync(join(tmpdir(), "prime-agent-cron-"));
+	const dir = mkdtempSync(join(tmpdir(), "prometh-cron-"));
 	tempDirs.push(dir);
 	return dir;
 }
