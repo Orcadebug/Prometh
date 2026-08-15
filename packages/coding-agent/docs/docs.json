@@ -28,6 +28,10 @@
           "path": "long-running-agents.md"
         },
         {
+          "title": "Compute-Driven Discovery",
+          "path": "compute-discovery.md"
+        },
+        {
           "title": "Providers",
           "path": "providers.md"
         },

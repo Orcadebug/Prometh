@@ -114,6 +114,8 @@ import {
 	prepareCompaction,
 	shouldCompact,
 } from "./compaction/index.js";
+import { createComputeHostHandlers } from "./compute/host-handlers.js";
+import { ComputeRuntime } from "./compute/runtime.js";
 import {
 	type ContextTreeNode,
 	type ContextWindowResolver,
@@ -124,6 +126,9 @@ import {
 import type { AgentCronJob, AgentRlmHeartbeatController, AgentRlmHeartbeatStatusUpdate } from "./cron-jobs.js";
 import { normalizeHeartbeatDeliveryMode } from "./cron-jobs.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
+import { DiscoveryEngine } from "./discovery/engine.js";
+import { createDiscoveryHostHandlers } from "./discovery/host-handlers.js";
+import type { DiscoveryCampaign } from "./discovery/types.js";
 import { exportSessionToHtml, type ToolHtmlRenderer } from "./export-html/index.js";
 import { createToolHtmlRenderer } from "./export-html/tool-renderer.js";
 import {
@@ -433,6 +438,12 @@ export interface AgentSessionConfig {
 	 * Default: true.
 	 */
 	includeGoals?: boolean;
+	/**
+	 * Whether the compute-driven discovery subsystems (compute.* and
+	 * discovery.* host requests, the bundled compute/discovery Python skills,
+	 * and /discovery) are available. Default: true.
+	 */
+	includeDiscovery?: boolean;
 	/** Daemon-backed agent-to-agent messaging bridge. Omitted for local-only sessions. */
 	agentMessageController?: AgentSessionMessageController;
 	/** Daemon-backed read-only active-session observation bridge. Omitted for local-only sessions. */
@@ -1237,6 +1248,12 @@ export class AgentSession {
 	/** Latest recap for this session, written by the daemon summarizer; read by a parent to label its child snapshots. */
 	private _currentRecap?: string;
 
+	// Compute-driven discovery
+	private _computeRuntime?: ComputeRuntime;
+	private _discoveryEngine?: DiscoveryEngine;
+	/** Discovery campaigns needing continuation, in creation order. */
+	private readonly _includeDiscovery: boolean;
+
 	// Model registry for API key resolution
 	private _modelRegistry: ModelRegistry;
 
@@ -1301,6 +1318,7 @@ export class AgentSession {
 		this._initialActiveToolNames = config.initialActiveToolNames;
 		this._allowedToolNames = config.allowedToolNames ? new Set(config.allowedToolNames) : undefined;
 		this._includeGoals = config.includeGoals ?? true;
+		this._includeDiscovery = config.includeDiscovery ?? true;
 		this._includeCompactSkill = config.includeCompactSkill ?? this.settingsManager.getCompactionAgentCallable();
 		this._rlmHeartbeatController = config.rlmHeartbeatController;
 		this._agentMessageController = config.agentMessageController;
@@ -1351,6 +1369,9 @@ export class AgentSession {
 		if (this._goalState.status === "active") {
 			this._goalAccountingStartedAt = Date.now();
 		}
+		if (this._includeDiscovery && this._rlmDepth === 0) {
+			this._initializeDiscoverySubsystems();
+		}
 
 		// Always subscribe to agent events for internal handling
 		// (session persistence, extensions, auto-compaction, retry logic)
@@ -1381,6 +1402,42 @@ export class AgentSession {
 		});
 		this._baseSystemPrompt = this._rebuildSystemPrompt(this.getActiveToolNames());
 		this.agent.state.systemPrompt = this._baseSystemPrompt;
+	}
+
+	// =========================================================================
+	// Compute-Driven Discovery
+	// =========================================================================
+
+	/** Authoritative compute runtime for this session (created lazily). */
+	get computeRuntime(): ComputeRuntime | undefined {
+		return this._computeRuntime;
+	}
+
+	/** Discovery engine for this session (created lazily). */
+	get discoveryEngine(): DiscoveryEngine | undefined {
+		return this._discoveryEngine;
+	}
+
+	private _initializeDiscoverySubsystems(): void {
+		if (this._computeRuntime) {
+			return;
+		}
+		const sessionArtifactDir = this.sessionManager.getSessionArtifactDir() ?? this._rlmSessionDir;
+		const computeAbort = new AbortController();
+		this._computeRuntime = new ComputeRuntime({
+			defaultCwd: this._cwd,
+			stateDir: sessionArtifactDir ? join(sessionArtifactDir, "compute") : undefined,
+			signal: computeAbort.signal,
+		});
+		this._discoveryEngine = new DiscoveryEngine({
+			compute: this._computeRuntime,
+			stateDir: sessionArtifactDir,
+			signal: computeAbort.signal,
+		});
+		this.registerDisposeCallback(() => {
+			computeAbort.abort();
+			this._computeRuntime?.dispose();
+		});
 	}
 
 	/** Model registry for API key resolution and model discovery */
@@ -2000,6 +2057,71 @@ export class AgentSession {
 		}
 		this._emitAutonomousStatus();
 		return true;
+	}
+
+	/**
+	 * Handle the /discovery session slash command. Subcommands:
+	 * status, start <objective>, pause <id>, resume <id>, stop <id>.
+	 */
+	private async _handleDiscoverySlashCommand(text: string): Promise<string> {
+		if (!this._includeDiscovery) {
+			throw new Error("compute-driven discovery is disabled in this session");
+		}
+		const command = parseSessionSlashCommand(text);
+		if (!command || command.name !== "discovery") {
+			throw new Error("not a discovery command");
+		}
+		this._initializeDiscoverySubsystems();
+		const engine = this._discoveryEngine;
+		if (!engine) {
+			throw new Error("discovery engine unavailable");
+		}
+		const rest = command.args.trim();
+		if (!rest || rest.toLowerCase() === "status") {
+			const campaigns = await engine.listCampaigns();
+			if (campaigns.length === 0) {
+				return "No discovery campaigns.";
+			}
+			return campaigns.map((campaign) => engine.formatCampaignSummary(campaign)).join("\n\n");
+		}
+		const parts = rest.split(/\s+/);
+		const subcommand = parts[0]?.toLowerCase();
+		switch (subcommand) {
+			case "start": {
+				const objective = parts.slice(1).join(" ").trim();
+				if (!objective) {
+					throw new Error("Usage: /discovery start <objective>");
+				}
+				const campaign = await engine.createCampaign({ objective });
+				return `Discovery campaign started: ${campaign.id}\nObjective: ${campaign.objective}`;
+			}
+			case "pause": {
+				const campaignId = parts[1];
+				if (!campaignId) {
+					throw new Error("Usage: /discovery pause <campaign-id>");
+				}
+				const campaign = await engine.pauseCampaign(campaignId);
+				return `Discovery campaign paused: ${campaign.id}`;
+			}
+			case "resume": {
+				const campaignId = parts[1];
+				if (!campaignId) {
+					throw new Error("Usage: /discovery resume <campaign-id>");
+				}
+				const campaign = await engine.resumeCampaign(campaignId);
+				return `Discovery campaign resumed: ${campaign.id}`;
+			}
+			case "stop": {
+				const campaignId = parts[1];
+				if (!campaignId) {
+					throw new Error("Usage: /discovery stop <campaign-id>");
+				}
+				const summary = await engine.complete(campaignId);
+				return `Discovery campaign stopped. ${engine.formatCampaignSummary(await engine.getCampaign(campaignId))}\n${JSON.stringify(summary)}`;
+			}
+			default:
+				throw new Error("Usage: /discovery [status|start <objective>|pause <id>|resume <id>|stop <id>]");
+		}
 	}
 
 	/** Append custom messages returned by before_agent_start extension handlers. */
@@ -3220,6 +3342,12 @@ export class AgentSession {
 		) {
 			return [];
 		}
+		// Discovery continuation: active campaigns with budget remaining warrant
+		// another turn. Bounded by the engine's budget checks, never spinning.
+		const discoveryMessage = this._getDiscoveryContinuationMessage(context);
+		if (discoveryMessage) {
+			return [discoveryMessage];
+		}
 		const autonomousSnapshot = this._snapshotAutonomousRuntimeState();
 		const autonomousMessage = await nextAutonomousContinuation(this._autonomousState, context.message, {
 			cwd: this._cwd,
@@ -3230,6 +3358,50 @@ export class AgentSession {
 			return [];
 		}
 		return autonomousMessage ? [autonomousMessage] : [];
+	}
+
+	/**
+	 * Build a continuation message for an active discovery campaign. A
+	 * campaign may legitimately require another turn when it is active and
+	 * still within budget; campaigns at a budget bound stop cleanly.
+	 */
+	private _getDiscoveryContinuationMessage(context: GetContinuationMessagesContext): AgentMessage | undefined {
+		if (!this._includeDiscovery || !this._discoveryEngine) {
+			return undefined;
+		}
+		if (context.message.stopReason === "error" || context.message.stopReason === "aborted") {
+			return undefined;
+		}
+		let active: DiscoveryCampaign | undefined;
+		try {
+			active = this._discoveryEngine.activeCampaigns.find((campaign) => {
+				return this._discoveryEngine!.checkBudgets(campaign.id) === undefined;
+			});
+		} catch {
+			return undefined;
+		}
+		if (!active) {
+			return undefined;
+		}
+		const budgetHit = this._discoveryEngine.checkBudgets(active.id);
+		if (budgetHit) {
+			return undefined;
+		}
+		return {
+			role: "user",
+			content: [
+				{
+					type: "text",
+					text: [
+						"An active discovery campaign still has budget remaining.",
+						`Campaign ${active.id}: ${active.objective}`,
+						`Status: ${this._discoveryEngine.formatCampaignSummary(active)}`,
+						"Continue the campaign: propose candidates, execute compute jobs, observe results, record experiences, or conclude with discovery.complete() only when the objective is validated. Do not mark the campaign complete merely because budget is nearly exhausted.",
+					].join("\n"),
+				},
+			],
+			timestamp: Date.now(),
+		};
 	}
 
 	// Track last assistant message for auto-compaction check
@@ -5832,6 +6004,9 @@ export class AgentSession {
 					break;
 				case "autonomous":
 					await this._handleAutonomousSlashCommand(input.text);
+					break;
+				case "discovery":
+					resultText = await this._handleDiscoverySlashCommand(input.text);
 					break;
 			}
 			if (resultText) {
@@ -8858,6 +9033,10 @@ export class AgentSession {
 		}
 		if (this._mcpManager) {
 			Object.assign(handlers, this._mcpManager.hostHandlers());
+		}
+		if (this._includeDiscovery && this._computeRuntime && this._discoveryEngine) {
+			Object.assign(handlers, createComputeHostHandlers(this._computeRuntime));
+			Object.assign(handlers, createDiscoveryHostHandlers(this._discoveryEngine));
 		}
 		return handlers;
 	}

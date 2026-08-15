@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added compute-driven discovery: bounded compute jobs (local subprocess and optional Kaggle CLI backends) and persistent discovery campaigns with lineage, elite/novelty/surprise/failure archives, baselines, replication, budgets, and a `/discovery` slash command, exposed to IPython through the new `compute` and `discovery` skills.
 - Fixed fullscreen wheel scrolling in Ghostty while retaining application link clicks; set `terminal.fullscreenMouse` to `false` to use native Cmd-click instead.
 - Changed the agents view to sort idle and inactive sessions by last message time, newest first, while keeping running agents in stable creation order.
 - Fixed `openai-codex` models being invisible to `rlm` subagents and `find_models` because model discovery reported Prime Agent's own version as the Codex client version ([#1375](https://github.com/PrimeIntellect-ai/prime-agent/pull/1375) by [@bilelrais](https://github.com/bilelrais)).
