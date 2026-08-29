@@ -1,0 +1,22 @@
+node_modules/
+host/native-host-wrapper.sh
+host/native-host-wrapper.bat
+host/com.anthropic.open_claude_in_chrome.json
+.env
+*.log
+.DS_Store
+.wrangler/
+
+# signing key + packaged build (never commit the key)
+extension.pem
+extension.crx
+
+# benchmark research data (486MB base64 trajectories, frames, logs) — not extension code
+benchmark/data/
+benchmark/environments/
+benchmark/logs/
+benchmark/throttle_evidence/
+benchmark/__pycache__/
+
+# personal research data — never commit
+DO_NOT_COMMIT/
