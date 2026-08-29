@@ -104,6 +104,14 @@ import {
 } from "./autonomous.js";
 import { type BashResult, executeBashWithOperations } from "./bash-executor.js";
 import {
+	type ChromeBridgeClient,
+	type ChromeBridgeSettings,
+	createChromeBridgeHostHandlers,
+	createChromeBridgeToolDefinitions,
+	startChromeBridge,
+	stopChromeBridge,
+} from "./chrome-bridge/index.js";
+import {
 	COMPACT_SKILL_NAME,
 	type CompactionResult,
 	calculateContextTokens,
@@ -463,6 +471,12 @@ export interface AgentSessionConfig {
 	 * (refresh, begin_login) are exposed to the kernel.
 	 */
 	mcpManager?: McpManager;
+	/**
+	 * Activate the vendored open-claude-in-chrome bridge. `true` enables
+	 * the bridge with default settings (port 18765, host 127.0.0.1); an
+	 * object form takes per-call overrides. Default: false.
+	 */
+	chromeBridge?: boolean | ChromeBridgeSettings;
 	/**
 	 * Override base tools (useful for custom runtimes).
 	 *
@@ -1196,6 +1210,7 @@ export class AgentSession {
 	private _agentMessageController?: AgentSessionMessageController;
 	private _agentObserveController?: AgentObserveController;
 	private _mcpManager?: McpManager;
+	private _chromeBridge?: ChromeBridgeClient;
 	private _baseToolsOverride?: Record<string, AgentTool>;
 	private _sessionStartEvent: SessionStartEvent;
 	private _extensionUIContext?: ExtensionUIContext;
@@ -1311,6 +1326,9 @@ export class AgentSession {
 		this._scopedModels = config.scopedModels ?? [];
 		this._resourceLoader = config.resourceLoader;
 		this._customTools = config.customTools ?? [];
+		if (this._chromeBridge) {
+			this._customTools = [...this._customTools, ...createChromeBridgeToolDefinitions(this._chromeBridge)];
+		}
 		this._cwd = config.cwd;
 		this._agentDir = config.agentDir;
 		this._modelRegistry = config.modelRegistry;
@@ -1324,6 +1342,11 @@ export class AgentSession {
 		this._agentMessageController = config.agentMessageController;
 		this._agentObserveController = config.agentObserveController;
 		this._mcpManager = config.mcpManager;
+		if (config.chromeBridge) {
+			const bridgeSettings: ChromeBridgeSettings =
+				typeof config.chromeBridge === "object" ? config.chromeBridge : {};
+			this._chromeBridge = startChromeBridge(bridgeSettings);
+		}
 		this._baseToolsOverride = config.baseToolsOverride;
 		this._sessionStartEvent = config.sessionStartEvent ?? { type: "session_start", reason: "startup" };
 		const headerRlmDepth = this.sessionManager.getHeader()?.rlmDepth;
@@ -1379,6 +1402,13 @@ export class AgentSession {
 		this._installAgentToolHooks();
 		this._installAgentTurnHook();
 		this._installAgentContinuationHook();
+
+		if (this._chromeBridge) {
+			const bridge = this._chromeBridge;
+			this.registerDisposeCallback(() => {
+				return stopChromeBridge(bridge);
+			});
+		}
 
 		this._buildRuntime({
 			activeToolNames: this._initialActiveToolNames,
@@ -9033,6 +9063,9 @@ export class AgentSession {
 		}
 		if (this._mcpManager) {
 			Object.assign(handlers, this._mcpManager.hostHandlers());
+		}
+		if (this._chromeBridge) {
+			Object.assign(handlers, createChromeBridgeHostHandlers(this._chromeBridge));
 		}
 		if (this._includeDiscovery && this._computeRuntime && this._discoveryEngine) {
 			Object.assign(handlers, createComputeHostHandlers(this._computeRuntime));

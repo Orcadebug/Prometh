@@ -33,6 +33,46 @@ Then authenticate with `/login` or set an environment variable such as `ANTHROPI
 > [!WARNING]
 > Prometh executes model-generated Python and project commands with your user permissions. Its worker and kernel processes improve lifecycle isolation and recovery; they are **not** a security sandbox. Review changes and use trusted repositories, instructions, skills, and extensions only.
 
+## Browser Automation (open-claude-in-chrome)
+
+Prometh ships with a built-in TCP bridge to a vendored copy of
+[open-claude-in-chrome](https://github.com/noemica-io/open-claude-in-chrome)
+(by [Noemica](https://noemica.io), MIT-style "clean-room reimplementation"
+of Anthropic's browser extension; this distribution includes it under the
+**PolyForm Noncommercial License 1.0.0** — see `LICENSE` and
+`extensions/open-claude-in-chrome/LICENSE`). When you launch Prometh with
+`--chrome-bridge`, the agent can drive any Chromium browser through 26 tools
+— `navigate`, `computer`, `read_page`, `find`, `form_input`, `javascript_tool`,
+`read_console_messages`, `read_network_requests`, and more — all with no
+domain blocklist and no separate MCP server process.
+
+### One-time setup
+
+1. Install the vendored extension into your Chromium browser:
+   ```bash
+   ./extensions/open-claude-in-chrome/install.sh <your-extension-id>
+   ```
+   (Open `chrome://extensions`, enable Developer mode, "Load unpacked" the
+   `extensions/open-claude-in-chrome/extension/` folder, then copy the
+   extension ID shown under the extension name.)
+2. Restart the browser.
+
+### Use
+
+```bash
+./prometh.sh --chrome-bridge
+```
+
+Then ask the agent anything web-shaped: *"Open Hacker News and summarize the
+top five stories"*, *"Sign in to GitHub and star this repo"*, *"Fill out the
+form at https://example.com and click submit"*. The agent talks to the
+extension over `127.0.0.1:18765` — no extra daemons, no MCP plumbing.
+
+For configuration (`port`, `host`, `autoStart`, `requestTimeoutMs`), see
+[packages/coding-agent/docs/chrome-bridge.md](packages/coding-agent/docs/chrome-bridge.md).
+The upstream `execute_code` and code-mode sandbox are **not** started by
+Prometh; if you need them, run the OCIC `server-hybrid.js` separately.
+
 ## Compute-Driven Discovery
 
 The headline feature of this fork. Prometh doesn't get smarter just because compute is available — it turns execution into experience.

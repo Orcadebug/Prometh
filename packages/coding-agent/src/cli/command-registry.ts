@@ -200,6 +200,7 @@ const TOP_LEVEL_OPTION_GROUPS: ReadonlyArray<{ heading: string; options: readonl
 			["-t, --tools <list>", "Allowlist comma-separated tool names"],
 			["-nt, --no-tools", "Disable all tools by default"],
 			["-nbt, --no-builtin-tools", "Disable built-in tools by default"],
+			["--chrome-bridge, --ocic", "Enable the vendored open-claude-in-chrome bridge (browser automation)"],
 			["-e, --extension <source>", "Load an extension (repeatable)"],
 			["-ne, --no-extensions", "Disable extension discovery"],
 			["--skill <path>", "Load a skill (repeatable)"],

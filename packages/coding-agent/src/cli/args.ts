@@ -28,6 +28,7 @@ export interface Args {
 	tools?: string[];
 	noTools?: boolean;
 	noBuiltinTools?: boolean;
+	chromeBridge?: boolean;
 	extensions?: string[];
 	noExtensions?: boolean;
 	print?: boolean;
@@ -153,6 +154,8 @@ export function parseArgs(args: string[]): Args {
 			result.noTools = true;
 		} else if (arg === "--no-builtin-tools" || arg === "-nbt") {
 			result.noBuiltinTools = true;
+		} else if (arg === "--chrome-bridge" || arg === "--ocic") {
+			result.chromeBridge = true;
 		} else if ((arg === "--tools" || arg === "-t") && i + 1 < args.length) {
 			result.tools = args[++i]
 				.split(",")

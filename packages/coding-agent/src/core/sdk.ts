@@ -7,6 +7,7 @@ import type { AgentSessionCreationOptions } from "./agent-session-services.js";
 import { formatNoModelsAvailableMessage } from "./auth-guidance.js";
 import { AuthStorage } from "./auth-storage.js";
 import type { AgentAutonomousConfig } from "./autonomous.js";
+import type { ChromeBridgeSettings } from "./chrome-bridge/index.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
 import type { ExtensionRunner, LoadExtensionsResult, SessionStartEvent, ToolDefinition } from "./extensions/index.js";
 import { McpManager } from "./mcp/mcp-manager.js";
@@ -56,6 +57,13 @@ export interface CreateAgentSessionOptions extends AgentSessionCreationOptions {
 	tools?: string[];
 	/** Custom tools to register (in addition to built-in tools). */
 	customTools?: ToolDefinition[];
+
+	/**
+	 * Activate the vendored open-claude-in-chrome bridge. `true` enables
+	 * the bridge with default settings (port 18765, host 127.0.0.1); an
+	 * object form takes per-call overrides. Default: false.
+	 */
+	chromeBridge?: boolean | ChromeBridgeSettings;
 
 	/** Resource loader. When omitted, DefaultResourceLoader is used. */
 	resourceLoader?: ResourceLoader;
@@ -377,6 +385,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		scopedModels: options.scopedModels,
 		resourceLoader,
 		customTools: options.customTools,
+		chromeBridge: options.chromeBridge,
 		modelRegistry,
 		mcpManager,
 		initialActiveToolNames,

@@ -17,6 +17,7 @@ export interface AgentSessionRuntimeConfig {
 	tools?: string[];
 	noTools?: boolean;
 	noBuiltinTools?: boolean;
+	chromeBridge?: boolean;
 	extensions?: string[];
 	noExtensions?: boolean;
 	skills?: string[];
@@ -68,6 +69,7 @@ export function mergeAgentSessionRuntimeConfig(
 		tools: cloneArray(override.tools ?? base.tools),
 		noTools: override.noTools ?? base.noTools,
 		noBuiltinTools: override.noBuiltinTools ?? base.noBuiltinTools,
+		chromeBridge: override.chromeBridge ?? base.chromeBridge,
 		extensions: cloneArray(override.extensions ?? base.extensions),
 		noExtensions: override.noExtensions ?? base.noExtensions,
 		skills: cloneArray(override.skills ?? base.skills),

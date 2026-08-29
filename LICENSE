@@ -21,3 +21,21 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+## Notice — Bundled Vendored Component
+
+This distribution includes a vendored copy of
+[open-claude-in-chrome](https://github.com/noemica-io/open-claude-in-chrome),
+located at `extensions/open-claude-in-chrome/` and committed at the SHA
+recorded in that subdirectory's `UPSTREAM.md`. That component is licensed
+under the **PolyForm Noncommercial License 1.0.0** (see
+`extensions/open-claude-in-chrome/LICENSE` for the full text). Use,
+modification, and redistribution of that vendored component are governed by
+that license; the rest of this Prometh distribution remains under the MIT
+license above.
+
+The vendored Chromium extension is provided "as is" without warranty. It is a
+clean-room reimplementation of Anthropic's browser extension and is not
+affiliated with, endorsed by, or sponsored by Anthropic.

@@ -501,6 +501,7 @@ const envPrefix =
 		.toUpperCase()
 		.replace(/[^A-Z0-9]+/g, "_")
 		.replace(/^_+|_+$/g, "") || "PI";
+export const ENV_PREFIX = envPrefix;
 export const PACKAGE_NAME: string = pkg.name || "@earendil-works/pi-coding-agent";
 export const APP_NAME: string = piConfigName || "pi";
 export const APP_TITLE: string = piConfigName ? APP_NAME : "π";

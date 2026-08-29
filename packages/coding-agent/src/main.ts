@@ -585,6 +585,9 @@ function buildSessionOptions(
 	} else if (config.noBuiltinTools) {
 		options.noTools = "builtin";
 	}
+	if (config.chromeBridge) {
+		options.chromeBridge = true;
+	}
 	if (config.tools) {
 		options.tools = [...config.tools];
 	}
@@ -654,6 +657,7 @@ function runtimeConfigFromArgs(
 		tools: parsed.tools,
 		noTools: parsed.noTools,
 		noBuiltinTools: parsed.noBuiltinTools,
+		chromeBridge: parsed.chromeBridge,
 		extensions: resolveCliPaths(cwd, parsed.extensions),
 		noExtensions: parsed.noExtensions,
 		skills: resolveCliPaths(cwd, parsed.skills),
@@ -700,6 +704,7 @@ export function resolveRuntimeSessionOptions(
 		tools: runtimeSessionOptions?.tools ?? sessionOptions.tools,
 		noTools: runtimeSessionOptions?.noTools ?? sessionOptions.noTools,
 		customTools: runtimeSessionOptions?.customTools ?? sessionOptions.customTools,
+		chromeBridge: runtimeSessionOptions?.chromeBridge ?? sessionOptions.chromeBridge,
 		initialActiveToolNames: runtimeSessionOptions?.initialActiveToolNames,
 		allowedToolNames: runtimeSessionOptions?.allowedToolNames,
 		includeGoals: runtimeSessionOptions?.includeGoals,

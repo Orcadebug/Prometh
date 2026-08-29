@@ -4,6 +4,7 @@ import { homedir } from "os";
 import { dirname, join } from "path";
 import lockfile from "proper-lockfile";
 import { CONFIG_DIR_NAME, getAgentDir } from "../config.js";
+import type { ChromeBridgeSettings } from "./chrome-bridge/index.js";
 
 const RECENT_MODELS_LIMIT = 20;
 export const DEFAULT_IDLE_EVICTION_MINUTES = 90;
@@ -144,6 +145,7 @@ export interface Settings {
 	quietStartup?: boolean;
 	shellCommandPrefix?: string; // Prefix prepended to every bash command (e.g., "shopt -s expand_aliases" for alias support)
 	npmCommand?: string[]; // Command used for npm package lookup/install operations, argv-style (e.g., ["mise", "exec", "node@20", "--", "npm"])
+	chromeBridge?: ChromeBridgeSettings; // In-process browser automation bridge to the vendored open-claude-in-chrome extension
 	mcpServers?: Record<string, McpServerConfig>; // User-declared MCP servers (name → config); built-ins are in the ai/mcp catalog
 	packages?: PackageSource[]; // Array of npm/git package sources (string or object with filtering)
 	extensions?: string[]; // Array of local extension file paths or directories
@@ -976,6 +978,16 @@ export class SettingsManager {
 	setShellCommandPrefix(prefix: string | undefined): void {
 		this.globalSettings.shellCommandPrefix = prefix;
 		this.markModified("shellCommandPrefix");
+		this.save();
+	}
+
+	getChromeBridge(): ChromeBridgeSettings | undefined {
+		return this.settings.chromeBridge;
+	}
+
+	setChromeBridge(value: ChromeBridgeSettings | undefined): void {
+		this.globalSettings.chromeBridge = value;
+		this.markModified("chromeBridge");
 		this.save();
 	}
 

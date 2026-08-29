@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added a built-in TCP bridge to a vendored copy of [open-claude-in-chrome](https://github.com/noemica-io/open-claude-in-chrome) (by [Noemica](https://noemica.io)), exposing all 26 browser-automation tools to the agent directly over `127.0.0.1:18765` (configurable). Activate with `--chrome-bridge` on the CLI, `chromeBridge: true` in `createAgentSession`, or `chromeBridge` in `~/.prometh/settings.json`; from the IPython kernel use the new `chrome.bridge.call` / `chrome.bridge.status` / `chrome.bridge.list` host requests. The vendored copy lives at `extensions/open-claude-in-chrome/` under the PolyForm Noncommercial License 1.0.0 (see `LICENSE`).
 - Renamed the product to Prometh: rebranded the CLI command, launcher, config directory (`~/.prometh`), environment variables, docs, and installer; version checks and analytics are now opt-in with no default upstream endpoints.
 - Added compute-driven discovery: bounded compute jobs (local subprocess and optional Kaggle CLI backends) and persistent discovery campaigns with lineage, elite/novelty/surprise/failure archives, baselines, replication, budgets, and a `/discovery` slash command, exposed to IPython through the new `compute` and `discovery` skills.
 - Fixed fullscreen wheel scrolling in Ghostty while retaining application link clicks; set `terminal.fullscreenMouse` to `false` to use native Cmd-click instead.

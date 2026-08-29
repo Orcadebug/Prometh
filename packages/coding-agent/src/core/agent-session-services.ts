@@ -8,6 +8,7 @@ import type { AgentExecutionMode } from "./agent-session-config.js";
 import { installAgentTraceUpload } from "./agent-traces.js";
 import { AuthStorage } from "./auth-storage.js";
 import type { AgentAutonomousConfig } from "./autonomous.js";
+import type { ChromeBridgeSettings } from "./chrome-bridge/index.js";
 import type { AgentRlmHeartbeatController } from "./cron-jobs.js";
 import { createHerdrAgentStateExtension } from "./extensions/builtin/herdr-agent-state.js";
 import type { SessionStartEvent, ToolDefinition } from "./extensions/index.js";
@@ -67,6 +68,7 @@ export interface AgentSessionCreationOptions {
 	tools?: string[];
 	noTools?: "all" | "builtin";
 	customTools?: ToolDefinition[];
+	chromeBridge?: boolean | ChromeBridgeSettings;
 	initialActiveToolNames?: string[];
 	allowedToolNames?: string[];
 	includeGoals?: boolean;
@@ -284,6 +286,7 @@ export async function createAgentSessionFromServices(
 		tools: options.tools,
 		noTools: options.noTools,
 		customTools: options.customTools,
+		chromeBridge: options.chromeBridge,
 		initialActiveToolNames: options.initialActiveToolNames,
 		allowedToolNames: options.allowedToolNames,
 		includeGoals: options.includeGoals,

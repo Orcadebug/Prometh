@@ -32,6 +32,10 @@
           "path": "compute-discovery.md"
         },
         {
+          "title": "Browser Automation (open-claude-in-chrome)",
+          "path": "chrome-bridge.md"
+        },
+        {
           "title": "Providers",
           "path": "providers.md"
         },
