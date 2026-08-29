@@ -15,7 +15,7 @@ export function createChromeBridgeHostHandlers(client: ChromeBridgeClient): Host
 			const method = typeof payload.method === "string" ? payload.method : "";
 			if (!method) throw new Error("chrome.bridge.call: `method` is required");
 			const params = (payload.params ?? {}) as Record<string, unknown>;
-			const result = await client.request({ type: method, ...params });
+			const result = await client.request({ tool: method, args: params });
 			return { result };
 		},
 		"chrome.bridge.status": async () => client.status(),

@@ -6,7 +6,7 @@ export type {
 } from "./chrome-bridge-client.js";
 export { ChromeBridgeClient } from "./chrome-bridge-client.js";
 export { createChromeBridgeHostHandlers } from "./chrome-bridge-host-handlers.js";
-export { startChromeBridge, stopChromeBridge } from "./chrome-bridge-lifecycle.js";
+export { type ChromeBridgeProcess, startChromeBridge, stopChromeBridge } from "./chrome-bridge-lifecycle.js";
 export type { ChromeBridgeSettings } from "./chrome-bridge-settings.js";
 export {
 	CHROME_BRIDGE_DEFAULT_HOST,

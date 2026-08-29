@@ -104,7 +104,7 @@ import {
 } from "./autonomous.js";
 import { type BashResult, executeBashWithOperations } from "./bash-executor.js";
 import {
-	type ChromeBridgeClient,
+	type ChromeBridgeProcess,
 	type ChromeBridgeSettings,
 	createChromeBridgeHostHandlers,
 	createChromeBridgeToolDefinitions,
@@ -1210,7 +1210,7 @@ export class AgentSession {
 	private _agentMessageController?: AgentSessionMessageController;
 	private _agentObserveController?: AgentObserveController;
 	private _mcpManager?: McpManager;
-	private _chromeBridge?: ChromeBridgeClient;
+	private _chromeBridge?: ChromeBridgeProcess;
 	private _baseToolsOverride?: Record<string, AgentTool>;
 	private _sessionStartEvent: SessionStartEvent;
 	private _extensionUIContext?: ExtensionUIContext;
@@ -1327,7 +1327,7 @@ export class AgentSession {
 		this._resourceLoader = config.resourceLoader;
 		this._customTools = config.customTools ?? [];
 		if (this._chromeBridge) {
-			this._customTools = [...this._customTools, ...createChromeBridgeToolDefinitions(this._chromeBridge)];
+			this._customTools = [...this._customTools, ...createChromeBridgeToolDefinitions(this._chromeBridge.client)];
 		}
 		this._cwd = config.cwd;
 		this._agentDir = config.agentDir;
@@ -9065,7 +9065,7 @@ export class AgentSession {
 			Object.assign(handlers, this._mcpManager.hostHandlers());
 		}
 		if (this._chromeBridge) {
-			Object.assign(handlers, createChromeBridgeHostHandlers(this._chromeBridge));
+			Object.assign(handlers, createChromeBridgeHostHandlers(this._chromeBridge.client));
 		}
 		if (this._includeDiscovery && this._computeRuntime && this._discoveryEngine) {
 			Object.assign(handlers, createComputeHostHandlers(this._computeRuntime));

@@ -28,7 +28,7 @@ interface FakeServer {
 	/** Most recent request payload received. */
 	lastRequest: unknown;
 	/** Function to produce the response for each request. */
-	respond: (req: { id: string; type: string; [k: string]: unknown }) => unknown;
+	respond: (req: { id: string; tool: string; args: Record<string, unknown>; [k: string]: unknown }) => unknown;
 	server: Server;
 	clients: Set<Socket>;
 	closed: Promise<void>;
@@ -52,9 +52,16 @@ async function startFakeServer(): Promise<FakeServer> {
 				buffer = buffer.slice(nl + 1);
 				if (!line) continue;
 				try {
-					const req = JSON.parse(line) as { id: string; type: string; [k: string]: unknown };
+					const req = JSON.parse(line) as { id?: string; type?: string; tool?: string; args?: unknown };
 					lastRequest = req;
-					const result = respond(req);
+					// The client handshake: first line must be client_hello, and
+					// the server replies with client_ack before any tool_request.
+					if (req.type === "client_hello") {
+						socket.write(`${JSON.stringify({ type: "client_ack", clientId: "test" })}\n`);
+						continue;
+					}
+					if (!req.id) continue;
+					const result = respond(req as never);
 					if (result === undefined) {
 						// Sentinel: stay silent, let the client time out / abort.
 						continue;
@@ -158,12 +165,12 @@ describe("ChromeBridgeClient", () => {
 
 	it("connects, sends a request, and resolves with the matching response", async () => {
 		fake = await startFakeServer();
-		fake.respond = (req) => ({ tabId: req.tabId, status: "navigated" });
+		fake.respond = (req) => ({ tabId: req.args.tabId, status: "navigated" });
 		client = new ChromeBridgeClient({ port: fake.port, host: fake.host, requestTimeoutMs: 2000 });
 		client.connect();
-		const result = await client.request({ type: "navigate", url: "https://example.com", tabId: 1 });
+		const result = await client.request({ tool: "navigate", args: { url: "https://example.com", tabId: 1 } });
 		expect(result).toEqual({ tabId: 1, status: "navigated" });
-		expect(fake.lastRequest).toMatchObject({ type: "navigate", url: "https://example.com", tabId: 1 });
+		expect(fake.lastRequest).toMatchObject({ tool: "navigate", args: { url: "https://example.com", tabId: 1 } });
 	});
 
 	it("rejects with an error when the server replies with `error`", async () => {
@@ -173,7 +180,7 @@ describe("ChromeBridgeClient", () => {
 		fake.respond = () => ({ __error: "extension disconnected" });
 		client = new ChromeBridgeClient({ port: fake.port, host: fake.host, requestTimeoutMs: 2000 });
 		client.connect();
-		await expect(client.request({ type: "computer" })).rejects.toThrow(/extension disconnected/);
+		await expect(client.request({ tool: "computer", args: {} })).rejects.toThrow(/extension disconnected/);
 	});
 
 	it("rejects with a timeout error when the server never replies", async () => {
@@ -181,7 +188,7 @@ describe("ChromeBridgeClient", () => {
 		fake.respond = () => undefined; // sentinel: stay silent
 		client = new ChromeBridgeClient({ port: fake.port, host: fake.host, requestTimeoutMs: 80 });
 		client.connect();
-		await expect(client.request({ type: "read_page" })).rejects.toThrow(/timed out/);
+		await expect(client.request({ tool: "read_page", args: {} })).rejects.toThrow(/timed out/);
 	});
 
 	it("rejects when AbortSignal aborts before a reply", async () => {
@@ -190,7 +197,7 @@ describe("ChromeBridgeClient", () => {
 		client = new ChromeBridgeClient({ port: fake.port, host: fake.host, requestTimeoutMs: 5000 });
 		client.connect();
 		const ctrl = new AbortController();
-		const p = client.request({ type: "find" }, { signal: ctrl.signal });
+		const p = client.request({ tool: "find", args: {} }, { signal: ctrl.signal });
 		setTimeout(() => ctrl.abort(), 30);
 		await expect(p).rejects.toThrow(/aborted/);
 	});
@@ -205,7 +212,7 @@ describe("ChromeBridgeClient", () => {
 			retryIntervalMs: 50,
 		});
 		client.connect();
-		await client.request({ type: "navigate", url: "https://a" });
+		await client.request({ tool: "navigate", args: { url: "https://a" } });
 		// Simulate a server crash — destroy all sockets, close the server, and stand up a replacement.
 		for (const s of fake.clients) s.destroy();
 		await fake.closed;
@@ -234,7 +241,7 @@ describe("createChromeBridgeToolDefinitions", () => {
 	it("round-trips a navigate call through a fake server and returns an AgentToolResult", async () => {
 		const fake = await startFakeServer();
 		try {
-			fake.respond = (req) => ({ tabId: req.tabId, navigated: true });
+			fake.respond = (req) => ({ tabId: req.args.tabId, navigated: true });
 			const client = new ChromeBridgeClient({ port: fake.port, host: fake.host, requestTimeoutMs: 2000 });
 			client.connect();
 			const defs = createChromeBridgeToolDefinitions(client);
@@ -271,7 +278,7 @@ describe("createChromeBridgeHostHandlers", () => {
 	it("chrome.bridge.call forwards the request to the client", async () => {
 		const fake = await startFakeServer();
 		try {
-			fake.respond = (req) => ({ echo: req.x });
+			fake.respond = (req) => ({ echo: req.args.x });
 			const client = new ChromeBridgeClient({ port: fake.port, host: fake.host, requestTimeoutMs: 2000 });
 			client.connect();
 			const handlers = createChromeBridgeHostHandlers(client);

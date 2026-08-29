@@ -15,17 +15,20 @@ export type ChromeBridgeEvent =
 	| { type: string; [key: string]: unknown };
 
 /**
- * Upstream tool calls (computer, navigate, read_page, ...) are routed by the
- * `type` field on the wire. The native host forwards them as
- * `{type, ...payload}\n` and the matching extension reply comes back as
- * `{id, type: "result"|"error", result?, error?}\n` keyed by the `id` we
- * stamp on the request.
+ * A tool invocation sent to the vendored OCIC MCP server (tool-runtime.js).
+ *
+ * The wire protocol is newline-delimited JSON. A client connection is
+ * classified as a *client* (rather than a native host) by sending
+ * `{"type": "client_hello"}` as the very first line. After the server replies
+ * with `{"type": "client_ack", clientId}`, tool calls are sent as
+ * `{"type": "tool_request", id, tool, args}` and the response comes back as
+ * `{id, ...}` (the server strips its client-prefixed id before forwarding).
  */
 export interface ChromeBridgeRequest {
-	/** Tool/method name (matches upstream `type` field, e.g. "navigate", "computer"). */
-	type: string;
-	/** Optional payload — the parameters for the tool call. */
-	[key: string]: unknown;
+	/** Tool name (e.g. "navigate", "computer"). */
+	tool: string;
+	/** Tool arguments — the parameters for the tool call. */
+	args: Record<string, unknown>;
 }
 
 export interface ChromeBridgeResponse {
@@ -50,7 +53,7 @@ export interface ChromeBridgeClientOptions {
 	host: string;
 	/** Default per-request timeout in ms. Default: 30_000. */
 	requestTimeoutMs?: number;
-	/** How often to retry when the connection drops (the native host is gone). Default: 1500. */
+	/** How often to retry when the connection drops (the MCP server is gone). Default: 1500. */
 	retryIntervalMs?: number;
 	/** Slow-lane retry interval after upstream rejects us (another browser holds the slot). Default: 15000. */
 	rejectedRetryIntervalMs?: number;
@@ -58,25 +61,31 @@ export interface ChromeBridgeClientOptions {
 }
 
 /**
- * In-process TCP client that talks to the vendored open-claude-in-chrome
- * native host on `127.0.0.1:18765` (configurable). Speaks newline-delimited
- * JSON; one request = one line out, one line back (matched by `id`).
+ * In-process TCP client that talks to the vendored open-claude-in-chrome MCP
+ * server (mcp-server.js, which hosts tool-runtime.js) on `127.0.0.1:18765`
+ * (configurable). Speaks newline-delimited JSON.
  *
- * Reconnects with the same backoff as upstream `native-host.js` so the client
- * and server have symmetrical retry behavior. The native host's lifetime is
- * tied to the browser/extension, so the client must tolerate long outages
- * (browser closed, extension reloaded, laptop asleep).
+ * Flow:
+ *   1. connect → send `{"type": "client_hello"}` on the first line
+ *   2. wait for `{"type": "client_ack", clientId}`
+ *   3. send `{"type": "tool_request", id, tool, args}` for each tool call
+ *   4. match the response by `id`
+ *
+ * The MCP server binds the port and also accepts the native host (the
+ * Chromium side) as a *second* connection. Reconnects with a 1.5s / 15s
+ * backoff so the client and server have symmetrical retry behavior.
  */
 export class ChromeBridgeClient extends EventEmitter {
 	private socket: Socket | null = null;
 	private buffer = "";
 	private pending = new Map<string, PendingRequest>();
-	/** Writes queued while the socket is mid-connect; flushed in the 'connect' handler. */
+	/** Writes queued while the socket is mid-connect; flushed after client_ack. */
 	private writeQueue: string[] = [];
 	private disposed = false;
 	private retryTimer: NodeJS.Timeout | null = null;
 	private rejected = false;
 	private lastError: string | undefined;
+	private handshaken = false;
 
 	constructor(public readonly options: ChromeBridgeClientOptions) {
 		super();
@@ -88,15 +97,12 @@ export class ChromeBridgeClient extends EventEmitter {
 		if (this.socket) return;
 		const sock = connect(this.options.port, this.options.host);
 		this.socket = sock;
+		this.handshaken = false;
 		sock.setNoDelay(true);
 		sock.on("connect", () => {
 			this.lastError = undefined;
-			// Drain any writes that arrived while the socket was connecting.
-			for (const wire of this.writeQueue) {
-				sock.write(wire);
-			}
-			this.writeQueue = [];
-			this.emit("connected");
+			// The first line MUST be client_hello for the server to classify us.
+			sock.write(`${JSON.stringify({ type: "client_hello" })}\n`);
 			this.options.logger?.info(`chrome-bridge connected to ${this.options.host}:${this.options.port}`);
 		});
 		sock.on("data", (chunk) => this.handleData(chunk.toString("utf-8")));
@@ -106,7 +112,14 @@ export class ChromeBridgeClient extends EventEmitter {
 		});
 		sock.on("close", () => {
 			this.socket = null;
+			this.handshaken = false;
 			this.writeQueue = [];
+			// Reject in-flight requests so callers don't hang.
+			for (const [, entry] of this.pending) {
+				clearTimeout(entry.timeoutHandle);
+				entry.reject(new Error("chrome-bridge: connection lost"));
+			}
+			this.pending.clear();
 			this.emit("disconnected");
 			this.scheduleReconnect();
 		});
@@ -140,6 +153,17 @@ export class ChromeBridgeClient extends EventEmitter {
 			} catch {
 				continue;
 			}
+			// client_ack completes the handshake.
+			if ((parsed as { type?: string }).type === "client_ack") {
+				this.handshaken = true;
+				// Drain any writes that arrived while we were waiting for the ack.
+				for (const wire of this.writeQueue) {
+					this.socket?.write(wire);
+				}
+				this.writeQueue = [];
+				this.emit("connected");
+				continue;
+			}
 			const id = (parsed as { id?: unknown }).id;
 			if (typeof id === "string" && this.pending.has(id)) {
 				const entry = this.pending.get(id)!;
@@ -160,9 +184,6 @@ export class ChromeBridgeClient extends EventEmitter {
 				continue;
 			}
 			// No id, or id we don't recognize — treat as server-initiated event.
-			// The upstream extension rejects the loser of the slot with a string
-			// "another browser profile" error; surface that so the next retry
-			// backs off into the slow lane.
 			if (
 				typeof (parsed as { error?: string }).error === "string" &&
 				/another browser profile/i.test((parsed as { error: string }).error)
@@ -174,8 +195,8 @@ export class ChromeBridgeClient extends EventEmitter {
 	}
 
 	/**
-	 * Send a request and await the matching response. Stamps a UUID on the
-	 * outgoing payload as `id`; the server echoes it back.
+	 * Send a tool request and await the matching response. Stamps a UUID on
+	 * the outgoing payload as `id`; the server echoes it back.
 	 */
 	request(payload: ChromeBridgeRequest, opts?: { timeoutMs?: number; signal?: AbortSignal }): Promise<unknown> {
 		if (this.disposed) {
@@ -215,11 +236,12 @@ export class ChromeBridgeClient extends EventEmitter {
 				entry.signal = opts.signal;
 			}
 			this.pending.set(id, entry);
-			const wire = `${JSON.stringify({ id, ...payload })}\n`;
-			if (this.socket) {
+			const wire = `${JSON.stringify({ type: "tool_request", id, tool: payload.tool, args: payload.args })}\n`;
+			if (this.socket && this.handshaken) {
 				this.socket.write(wire);
 			} else {
-				// `connect()` is async — the writeQueue is drained in the 'connect' handler.
+				// `connect()` is async and the handshake must complete first —
+				// the writeQueue is drained in the client_ack handler.
 				this.writeQueue.push(wire);
 			}
 		});
@@ -228,7 +250,7 @@ export class ChromeBridgeClient extends EventEmitter {
 	/** Snapshot the current connection state (for the host-request `chrome.bridge.status`). */
 	status(): { connected: boolean; port: number; host: string; pending: number; lastError?: string } {
 		return {
-			connected: !!this.socket,
+			connected: !!this.socket && this.handshaken,
 			port: this.options.port,
 			host: this.options.host,
 			pending: this.pending.size,

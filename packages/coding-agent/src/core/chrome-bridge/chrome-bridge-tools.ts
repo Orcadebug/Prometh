@@ -46,7 +46,7 @@ function toolResultToAgentResult(raw: unknown): AgentToolResult<unknown> {
 function makeExecutor(client: ChromeBridgeClient, toolName: string): ToolDefinition["execute"] {
 	return async (_id, params, signal) => {
 		const wireParams = (params ?? {}) as Record<string, unknown>;
-		const result = await client.request({ type: toolName, ...wireParams }, { signal });
+		const result = await client.request({ tool: toolName, args: wireParams }, { signal });
 		return toolResultToAgentResult(result);
 	};
 }
