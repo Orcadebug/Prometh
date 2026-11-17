@@ -1581,7 +1581,17 @@ async function generateModels() {
 	const aiGatewayModels = await fetchAiGatewayModels();
 
 	// Combine models (models.dev has priority)
-	const allModels = [...modelsDevModels, ...openRouterModels, ...aiGatewayModels].filter(
+	const upstreamCatalogUnavailable =
+		modelsDevModels.length === 0 || openRouterModels.length === 0 || aiGatewayModels.length === 0;
+	const catalogModels = upstreamCatalogUnavailable
+		? Object.values(EXISTING_MODELS)
+				.flatMap((models) => Object.values(models))
+				.map((model) => ({ ...model }) as Model<any>)
+			: [...modelsDevModels, ...openRouterModels, ...aiGatewayModels];
+	if (upstreamCatalogUnavailable) {
+		console.warn("One or more upstream catalogs were unavailable; preserving the checked-in model snapshot.");
+	}
+	const allModels = catalogModels.filter(
 		(model) =>
 			!((model.provider === "opencode" || model.provider === "opencode-go") && model.id === "gpt-5.3-codex-spark"),
 	);
