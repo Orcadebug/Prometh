@@ -72,7 +72,12 @@ export interface AgentSessionCreationOptions {
 	initialActiveToolNames?: string[];
 	allowedToolNames?: string[];
 	includeGoals?: boolean;
+	includeDiscovery?: boolean;
 	includeCompactSkill?: boolean;
+	includeRefinement?: boolean;
+	includeRecursion?: boolean;
+	includeMcp?: boolean;
+	computeLimits?: { maxConcurrency: number; maxJobs: number; maxWallTimeMs: number };
 	agentMessageController?: AgentSessionMessageController;
 	agentObserveController?: AgentObserveController;
 	rlmDepth?: number;
@@ -277,7 +282,7 @@ export async function createAgentSessionFromServices(
 		settingsManager: options.services.settingsManager,
 		modelRegistry: options.services.modelRegistry,
 		resourceLoader: options.services.resourceLoader,
-		mcpManager: options.services.mcpManager,
+		mcpManager: options.includeMcp === false ? undefined : options.services.mcpManager,
 		sessionManager: options.sessionManager,
 		model: options.model,
 		thinkingLevel: options.thinkingLevel,
@@ -290,7 +295,11 @@ export async function createAgentSessionFromServices(
 		initialActiveToolNames: options.initialActiveToolNames,
 		allowedToolNames: options.allowedToolNames,
 		includeGoals: options.includeGoals,
+		includeDiscovery: options.includeDiscovery,
 		includeCompactSkill: options.includeCompactSkill,
+		includeRefinement: options.includeRefinement,
+		includeRecursion: options.includeRecursion,
+		computeLimits: options.computeLimits,
 		agentMessageController: options.agentMessageController,
 		agentObserveController: options.agentObserveController,
 		rlmDepth: options.rlmDepth,

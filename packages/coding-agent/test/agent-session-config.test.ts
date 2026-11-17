@@ -168,4 +168,10 @@ describe("mergeAgentSessionRuntimeConfig", () => {
 		expect(mergeAgentSessionRuntimeConfig({}, { telemetryDisabled: true }).telemetryDisabled).toBe(true);
 		expect(mergeAgentSessionRuntimeConfig({}, {}).telemetryDisabled).toBeUndefined();
 	});
+
+	it("preserves the research profile across daemon config merges", () => {
+		expect(mergeAgentSessionRuntimeConfig({ researchProfile: "research-minimal" }, {}).researchProfile).toBe(
+			"research-minimal",
+		);
+	});
 });

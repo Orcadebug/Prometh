@@ -149,6 +149,24 @@ describe("parseArgs", () => {
 		});
 	});
 
+	describe("--profile flag", () => {
+		test("parses the research-minimal profile", () => {
+			expect(parseArgs(["--profile", "research-minimal"]).researchProfile).toBe("research-minimal");
+		});
+
+		test("reports an unknown profile", () => {
+			expect(parseArgs(["--profile", "unknown"]).diagnostics).toContainEqual(
+				expect.objectContaining({ type: "error", message: "Unknown profile: unknown" }),
+			);
+		});
+
+		test("requires persisted sessions for the research-minimal profile", () => {
+			expect(parseArgs(["--profile", "research-minimal", "--no-session"]).diagnostics).toContainEqual(
+				expect.objectContaining({ type: "error", message: expect.stringContaining("requires persisted sessions") }),
+			);
+		});
+	});
+
 	describe("flags with values", () => {
 		test("parses --provider", () => {
 			const result = parseArgs(["--provider", "openai"]);

@@ -78,6 +78,12 @@ export {
 	type WorkingIndicatorOptions,
 } from "./extensions/index.js";
 export type { RefinementResult } from "./refinement/index.js";
+export {
+	getResearchProfile,
+	RESEARCH_MINIMAL_PROFILE,
+	type ResearchProfile,
+	type ResearchProfileName,
+} from "./research-profile.js";
 export type { CreateRlmSubagentRuntimeOptions, RlmSubagentRuntime, SubagentRuntimeHost } from "./rlm-runtime.js";
 export { SessionImportFileNotFoundError } from "./session-import-errors.js";
 export type { SessionStats } from "./session-stats.js";

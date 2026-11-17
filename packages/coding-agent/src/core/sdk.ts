@@ -14,6 +14,7 @@ import { McpManager } from "./mcp/mcp-manager.js";
 import { convertToLlm } from "./messages.js";
 import { ModelRegistry } from "./model-registry.js";
 import { findInitialModel } from "./model-resolver.js";
+import { getResearchProfile, getResearchProfileSkillPaths, type ResearchProfileName } from "./research-profile.js";
 import type { ResourceLoader } from "./resource-loader.js";
 import { DefaultResourceLoader } from "./resource-loader.js";
 import { getDefaultSessionDir, SessionManager } from "./session-manager.js";
@@ -22,6 +23,8 @@ import { time } from "./timings.js";
 import { createBashTool, createEditTool, createIpythonTool, withFileMutationQueue } from "./tools/index.js";
 
 export interface CreateAgentSessionOptions extends AgentSessionCreationOptions {
+	/** Apply a named capability policy to a directly created SDK session. */
+	researchProfile?: ResearchProfileName;
 	/** Working directory for project-local discovery. Default: process.cwd() */
 	cwd?: string;
 	/** Global config directory. Default: ~/.pi/agent */
@@ -107,6 +110,7 @@ export type {
 	ToolDefinition,
 } from "./extensions/index.js";
 export type { PromptTemplate } from "./prompt-templates.js";
+export { RESEARCH_MINIMAL_PROFILE, type ResearchProfile, type ResearchProfileName } from "./research-profile.js";
 export type { CreateRlmSubagentRuntimeOptions, RlmSubagentRuntime, SubagentRuntimeHost } from "./rlm-runtime.js";
 export type { Skill } from "./skills.js";
 export type { Tool } from "./tools/index.js";
@@ -164,6 +168,15 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	const cwd = options.cwd ?? options.sessionManager?.getCwd() ?? process.cwd();
 	const agentDir = options.agentDir ?? getDefaultAgentDir();
 	let resourceLoader = options.resourceLoader;
+	const researchProfile = getResearchProfile(options.researchProfile);
+	if (researchProfile && options.resourceLoader) {
+		throw new Error(
+			"research-minimal creates its own restricted resource loader; custom resourceLoader is not supported",
+		);
+	}
+	if (researchProfile && options.customTools?.length) {
+		throw new Error("research-minimal does not permit custom tools");
+	}
 
 	// Use provided or create AuthStorage and ModelRegistry
 	const authPath = options.agentDir ? join(agentDir, "auth.json") : undefined;
@@ -186,6 +199,16 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			agentDir,
 			settingsManager,
 			extraBuiltinSkillOverrides: () => mcpManager.getDisabledBuiltinSkillOverrides(),
+			...(researchProfile
+				? {
+						additionalSkillPaths: getResearchProfileSkillPaths(researchProfile),
+						noExtensions: true,
+						noSkills: true,
+						noPromptTemplates: true,
+						noThemes: true,
+						noContextFiles: true,
+					}
+				: {}),
 		});
 		await resourceLoader.reload();
 		time("resourceLoader.reload");
@@ -258,8 +281,9 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 
 	const allowedToolNames = options.allowedToolNames ?? options.tools ?? (options.noTools === "all" ? [] : undefined);
 	const includeGoals = options.includeGoals ?? (options.tools !== undefined || options.noTools !== "all");
-	const initialActiveToolNames: string[] =
-		options.initialActiveToolNames ?? (options.tools ? [...options.tools] : options.noTools ? [] : ["ipython"]);
+	const initialActiveToolNames: string[] = researchProfile
+		? ["ipython"]
+		: (options.initialActiveToolNames ?? (options.tools ? [...options.tools] : options.noTools ? [] : ["ipython"]));
 
 	let agent: Agent;
 
@@ -385,19 +409,29 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		scopedModels: options.scopedModels,
 		resourceLoader,
 		customTools: options.customTools,
-		chromeBridge: options.chromeBridge,
 		modelRegistry,
-		mcpManager,
+		mcpManager: researchProfile ? undefined : mcpManager,
 		initialActiveToolNames,
 		allowedToolNames,
-		includeGoals,
-		includeCompactSkill: options.includeCompactSkill,
+		includeGoals: researchProfile ? false : includeGoals,
+		includeDiscovery: researchProfile ? true : options.includeDiscovery,
+		includeCompactSkill: researchProfile ? false : options.includeCompactSkill,
+		includeRefinement: researchProfile ? false : options.includeRefinement,
+		includeRecursion: researchProfile ? false : options.includeRecursion,
+		computeLimits: researchProfile
+			? {
+					maxConcurrency: researchProfile.limits.maxConcurrentJobs,
+					maxJobs: researchProfile.limits.maxExperiments,
+					maxWallTimeMs: researchProfile.limits.maxWallTimeMs,
+				}
+			: options.computeLimits,
+		chromeBridge: researchProfile ? false : options.chromeBridge,
+		rlmMaxDepth: researchProfile ? 0 : options.rlmMaxDepth,
 		rlmHeartbeatController: options.rlmHeartbeatController,
-		agentMessageController: options.agentMessageController,
-		agentObserveController: options.agentObserveController,
+		agentMessageController: researchProfile ? undefined : options.agentMessageController,
+		agentObserveController: researchProfile ? undefined : options.agentObserveController,
 		extensionRunnerRef,
 		rlmDepth: options.rlmDepth,
-		rlmMaxDepth: options.rlmMaxDepth,
 		rlmSessionDir: options.rlmSessionDir,
 		rlmParentNodeId: options.rlmParentNodeId,
 		rlmParentAgent: options.rlmParentAgent,

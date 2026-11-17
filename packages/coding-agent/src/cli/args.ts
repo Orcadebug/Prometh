@@ -4,6 +4,7 @@
 
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { APP_NAME } from "../config.js";
+import type { ResearchProfileName } from "../core/research-profile.js";
 
 export type Mode = "text" | "json" | "rpc" | "acp" | "daemon";
 
@@ -50,6 +51,7 @@ export interface Args {
 	autonomousTimeoutMs?: number;
 	goal?: string;
 	goalTokenBudget?: number;
+	researchProfile?: ResearchProfileName;
 	listModels?: string | true;
 	offline?: boolean;
 	verbose?: boolean;
@@ -137,6 +139,15 @@ export function parseArgs(args: string[]): Args {
 			result.apiKey = args[++i];
 		} else if (arg === "--cwd" && i + 1 < args.length) {
 			result.cwd = args[++i];
+		} else if (arg === "--profile") {
+			if (hasRequiredOptionValue(args, i, arg, result)) {
+				const profile = args[++i];
+				if (profile === "research-minimal") {
+					result.researchProfile = profile;
+				} else {
+					result.diagnostics.push({ type: "error", message: `Unknown profile: ${profile}` });
+				}
+			}
 		} else if (arg === "--system-prompt" && i + 1 < args.length) {
 			result.systemPrompt = args[++i];
 		} else if (arg === "--append-system-prompt" && i + 1 < args.length) {
@@ -324,6 +335,12 @@ export function parseArgs(args: string[]): Args {
 		result.diagnostics.push({
 			type: "error",
 			message: "--goal-token-budget requires --goal",
+		});
+	}
+	if (result.researchProfile && result.noSession) {
+		result.diagnostics.push({
+			type: "error",
+			message: "research-minimal requires persisted sessions; --no-session is not supported",
 		});
 	}
 

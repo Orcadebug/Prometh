@@ -1,5 +1,6 @@
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { AgentAutonomousConfig } from "./autonomous.js";
+import type { ResearchProfileName } from "./research-profile.js";
 
 export type AgentExecutionMode = "interactive" | "print" | "json" | "rpc" | "acp";
 
@@ -46,6 +47,8 @@ export interface AgentSessionRuntimeConfig {
 	 * thread_goal_state entry (idempotent restart/rehydration).
 	 */
 	initialGoal?: { objective: string; tokenBudget?: number };
+	/** Named runtime capability policy. */
+	researchProfile?: ResearchProfileName;
 }
 
 export function mergeAgentSessionRuntimeConfig(
@@ -88,6 +91,7 @@ export function mergeAgentSessionRuntimeConfig(
 		executionMode: override.executionMode ?? base.executionMode,
 		telemetryDisabled: base.telemetryDisabled || override.telemetryDisabled ? true : undefined,
 		initialGoal: override.initialGoal ?? base.initialGoal,
+		researchProfile: override.researchProfile ?? base.researchProfile,
 	};
 }
 

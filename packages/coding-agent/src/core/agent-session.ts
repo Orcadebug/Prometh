@@ -461,6 +461,12 @@ export interface AgentSessionConfig {
 	 * available to the model. Default: the compaction.agentCallable setting.
 	 */
 	includeCompactSkill?: boolean;
+	/** Whether the bundled refinement skill and automatic refinement are available. Default: true. */
+	includeRefinement?: boolean;
+	/** Whether recursive subagents and their kernel host handlers are available. Default: true. */
+	includeRecursion?: boolean;
+	/** Bounded compute limits for the session's discovery runtime. */
+	computeLimits?: { maxConcurrency: number; maxJobs: number; maxWallTimeMs: number };
 	/**
 	 * Optional host-side controller for the bundled rlm-heartbeat Python skill.
 	 * When omitted, rlm_heartbeat.* host requests are unavailable.
@@ -1206,6 +1212,9 @@ export class AgentSession {
 	private _allowedToolNames?: Set<string>;
 	private _includeGoals: boolean;
 	private _includeCompactSkill: boolean;
+	private _includeRefinement: boolean;
+	private _includeRecursion: boolean;
+	private readonly _computeLimits?: { maxConcurrency: number; maxJobs: number; maxWallTimeMs: number };
 	private _rlmHeartbeatController?: AgentRlmHeartbeatController;
 	private _agentMessageController?: AgentSessionMessageController;
 	private _agentObserveController?: AgentObserveController;
@@ -1338,6 +1347,9 @@ export class AgentSession {
 		this._includeGoals = config.includeGoals ?? true;
 		this._includeDiscovery = config.includeDiscovery ?? true;
 		this._includeCompactSkill = config.includeCompactSkill ?? this.settingsManager.getCompactionAgentCallable();
+		this._includeRefinement = config.includeRefinement ?? true;
+		this._includeRecursion = config.includeRecursion ?? true;
+		this._computeLimits = config.computeLimits;
 		this._rlmHeartbeatController = config.rlmHeartbeatController;
 		this._agentMessageController = config.agentMessageController;
 		this._agentObserveController = config.agentObserveController;
@@ -1457,6 +1469,10 @@ export class AgentSession {
 		this._computeRuntime = new ComputeRuntime({
 			defaultCwd: this._cwd,
 			stateDir: sessionArtifactDir ? join(sessionArtifactDir, "compute") : undefined,
+			enableKaggle: true,
+			maxConcurrency: this._computeLimits?.maxConcurrency,
+			maxJobs: this._computeLimits?.maxJobs,
+			maxWallTimeMs: this._computeLimits?.maxWallTimeMs,
 			signal: computeAbort.signal,
 		});
 		this._discoveryEngine = new DiscoveryEngine({
@@ -2487,7 +2503,7 @@ export class AgentSession {
 		// 3. Post-compaction auto-refine. Serialized sessions defer the
 		// compaction trigger to this boundary instead of entering the interactive
 		// path, which waits for agent idle and can never run inside a tool loop.
-		if (!this._autoRefineAllowedForSession()) {
+		if (!this._includeRefinement || !this._autoRefineAllowedForSession()) {
 			this._compactAutoRefinePending = false;
 			return;
 		}
@@ -2660,7 +2676,7 @@ export class AgentSession {
 		}
 
 		// Interval-triggered auto-refine background planning.
-		if (!this._autoRefineAllowedForSession()) {
+		if (!this._includeRefinement || !this._autoRefineAllowedForSession()) {
 			return;
 		}
 		const settings = this.settingsManager.getAutoRefineSettings();
@@ -4508,7 +4524,7 @@ export class AgentSession {
 			selectedTools: validToolNames,
 			toolSnippets,
 			promptGuidelines,
-			allowRecursion: this._rlmDepth < this._rlmMaxDepth,
+			allowRecursion: this._includeRecursion && this._rlmDepth < this._rlmMaxDepth,
 			rlmDepth: this._rlmDepth,
 			rlmParentAgent: this._rlmParentAgent,
 			harnessState: this._loadMergedHarnessState(),
@@ -7475,7 +7491,7 @@ export class AgentSession {
 	}
 
 	private _autoRefineAllowedForSession(): boolean {
-		return this._rlmDepth === 0 && this._localHarnessStateDir() !== undefined;
+		return this._includeRefinement && this._rlmDepth === 0 && this._localHarnessStateDir() !== undefined;
 	}
 
 	private _cancelPostCompactionContinue(): void {
@@ -8965,18 +8981,24 @@ export class AgentSession {
 	/** Typed handlers for host requests arriving from the IPython kernel comm bridge. */
 	private _createKernelHostHandlers(): HostRequestHandlers {
 		const handlers: HostRequestHandlers = {
-			"rlm.run": createRlmRunHostHandler(async ({ prompt, kwargs, cellSourceCode }) => ({
-				...(await this.runRlmChild(prompt, kwargs, cellSourceCode)),
-			})),
-			"rlm.find_models": createRlmFindModelsHostHandler((query, limit) => this.findRlmModels(query, limit)),
-			"rlm.list_subagents": createRlmListSubagentsHostHandler(() => this.listRlmSubagents()),
-			"rlm.delete_subagent": createRlmDeleteSubagentHostHandler((target) => this.deleteRlmSubagent(target)),
 			"model.info": async () => ({
 				id: this.model?.id ?? null,
 				provider: this.model?.provider ?? null,
 				input: this.model?.input ?? [],
 			}),
 		};
+		if (this._includeRecursion) {
+			handlers["rlm.run"] = createRlmRunHostHandler(async ({ prompt, kwargs, cellSourceCode }) => ({
+				...(await this.runRlmChild(prompt, kwargs, cellSourceCode)),
+			}));
+			handlers["rlm.find_models"] = createRlmFindModelsHostHandler((query, limit) =>
+				this.findRlmModels(query, limit),
+			);
+			handlers["rlm.list_subagents"] = createRlmListSubagentsHostHandler(() => this.listRlmSubagents());
+			handlers["rlm.delete_subagent"] = createRlmDeleteSubagentHostHandler((target) =>
+				this.deleteRlmSubagent(target),
+			);
+		}
 		if (this._includeGoals) {
 			for (const type of ["goal.get", "goal.create", "goal.complete"]) {
 				handlers[type] = async (payload) => this.handleGoalHostRequest(type, payload);
@@ -8987,7 +9009,7 @@ export class AgentSession {
 				handlers[type] = async (payload) => this.handleCompactHostRequest(type, payload);
 			}
 		}
-		if (this._autoRefineAllowedForSession()) {
+		if (this._includeRefinement && this._autoRefineAllowedForSession()) {
 			for (const type of ["refine.run", "refine.status"]) {
 				handlers[type] = async (payload) => this.handleRefineHostRequest(type, payload);
 			}
@@ -9243,6 +9265,9 @@ export class AgentSession {
 			customTools: [...this._customTools],
 			includeGoals: this._includeGoals,
 			includeCompactSkill: this._includeCompactSkill,
+			includeRefinement: this._includeRefinement,
+			includeRecursion: this._includeRecursion,
+			computeLimits: this._computeLimits,
 			rlmDepth: this._rlmDepth + 1,
 			rlmMaxDepth: this._rlmMaxDepth,
 			rlmParentNodeId: options.id,
@@ -9306,6 +9331,9 @@ export class AgentSession {
 			allowedToolNames: options.allowedToolNames,
 			includeGoals: options.includeGoals,
 			includeCompactSkill: options.includeCompactSkill,
+			includeRefinement: options.includeRefinement,
+			includeRecursion: options.includeRecursion,
+			computeLimits: options.computeLimits,
 			rlmDepth: options.rlmDepth,
 			rlmMaxDepth: options.rlmMaxDepth,
 			rlmSessionDir: options.sessionDir,

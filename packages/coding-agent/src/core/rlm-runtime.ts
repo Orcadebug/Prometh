@@ -217,6 +217,9 @@ export interface CreateRlmSubagentRuntimeOptions {
 	customTools: ToolDefinition[];
 	includeGoals: boolean;
 	includeCompactSkill: boolean;
+	includeRefinement?: boolean;
+	includeRecursion?: boolean;
+	computeLimits?: { maxConcurrency: number; maxJobs: number; maxWallTimeMs: number };
 	rlmDepth: number;
 	rlmMaxDepth: number;
 	rlmParentNodeId: string;

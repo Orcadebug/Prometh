@@ -60,5 +60,9 @@ or write it to a file and pass `result_file="results.json"` to
 - Local jobs inherit host permissions; this is not a security sandbox.
 - Budgets are bounded: concurrency, wall time, output size, and job count are
   enforced by the host.
-- Kaggle jobs require the official Kaggle CLI installed and authenticated;
+- Kaggle jobs require the official Kaggle CLI installed and authenticated. Run
+  `pip install kaggle`, authenticate with `kaggle config set -n username -v <username>`
+  and `kaggle config set -n key -v <api-key>`, then pass
+  `metadata={"kaggle_kernel_ref": "<username>/<kernel-slug>"}`. Outputs are
+  downloaded into the session's compute artifacts and include checkpoints and metrics.
   they degrade to a clean error otherwise.

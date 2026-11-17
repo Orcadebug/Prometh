@@ -148,6 +148,12 @@ export type {
 	ResolvedResource,
 } from "./core/package-manager.js";
 export { DefaultPackageManager } from "./core/package-manager.js";
+export {
+	getResearchProfile,
+	RESEARCH_MINIMAL_PROFILE,
+	type ResearchProfile,
+	type ResearchProfileName,
+} from "./core/research-profile.js";
 export type { ResourceCollision, ResourceDiagnostic, ResourceLoader } from "./core/resource-loader.js";
 export { DefaultResourceLoader, loadProjectContextFiles } from "./core/resource-loader.js";
 // SDK for programmatic usage

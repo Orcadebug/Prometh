@@ -60,6 +60,7 @@ import { installFileLogSink, setLogContext } from "./core/logging.js";
 import type { ModelRegistry } from "./core/model-registry.js";
 import { findInitialModel, resolveCliModel, resolveModelScope, type ScopedModel } from "./core/model-resolver.js";
 import { restoreStdout, takeOverStdout } from "./core/output-guard.js";
+import { getResearchProfile, getResearchProfileSkillPaths } from "./core/research-profile.js";
 import type { CreateAgentSessionOptions } from "./core/sdk.js";
 import {
 	formatMissingSessionCwdPrompt,
@@ -594,6 +595,23 @@ function buildSessionOptions(
 	if (config.autonomous) {
 		options.autonomous = mergeAutonomousConfig(undefined, config.autonomous);
 	}
+	const researchProfile = getResearchProfile(config.researchProfile);
+	if (researchProfile) {
+		options.tools = ["ipython"];
+		options.chromeBridge = false;
+		options.includeGoals = false;
+		options.includeDiscovery = true;
+		options.includeCompactSkill = false;
+		options.includeRefinement = false;
+		options.includeRecursion = false;
+		options.includeMcp = false;
+		options.rlmMaxDepth = 0;
+		options.computeLimits = {
+			maxConcurrency: researchProfile.limits.maxConcurrentJobs,
+			maxJobs: researchProfile.limits.maxExperiments,
+			maxWallTimeMs: researchProfile.limits.maxWallTimeMs,
+		};
+	}
 
 	return { options, cliThinkingFromModel, diagnostics };
 }
@@ -677,6 +695,7 @@ function runtimeConfigFromArgs(
 		// instead of its own appMode="daemon".
 		serializedRefine: appMode !== "interactive" && appMode !== "daemon",
 		initialGoal: parsed.goal ? { objective: parsed.goal, tokenBudget: parsed.goalTokenBudget } : undefined,
+		researchProfile: parsed.researchProfile,
 	};
 }
 
@@ -707,8 +726,13 @@ export function resolveRuntimeSessionOptions(
 		chromeBridge: runtimeSessionOptions?.chromeBridge ?? sessionOptions.chromeBridge,
 		initialActiveToolNames: runtimeSessionOptions?.initialActiveToolNames,
 		allowedToolNames: runtimeSessionOptions?.allowedToolNames,
-		includeGoals: runtimeSessionOptions?.includeGoals,
-		includeCompactSkill: runtimeSessionOptions?.includeCompactSkill,
+		includeGoals: runtimeSessionOptions?.includeGoals ?? sessionOptions.includeGoals,
+		includeDiscovery: runtimeSessionOptions?.includeDiscovery ?? sessionOptions.includeDiscovery,
+		includeCompactSkill: runtimeSessionOptions?.includeCompactSkill ?? sessionOptions.includeCompactSkill,
+		includeRefinement: runtimeSessionOptions?.includeRefinement ?? sessionOptions.includeRefinement,
+		includeRecursion: runtimeSessionOptions?.includeRecursion ?? sessionOptions.includeRecursion,
+		includeMcp: runtimeSessionOptions?.includeMcp ?? sessionOptions.includeMcp,
+		computeLimits: runtimeSessionOptions?.computeLimits ?? sessionOptions.computeLimits,
 		rlmHeartbeatController: runtimeSessionOptions?.rlmHeartbeatController,
 		agentMessageController: runtimeSessionOptions?.agentMessageController,
 		agentObserveController: runtimeSessionOptions?.agentObserveController,
@@ -734,6 +758,7 @@ async function prepareRuntimeServices(options: {
 	sessionOptionsOverride?: CreateAgentSessionOptions;
 }): Promise<PreparedRuntimeServices> {
 	const { config, sessionManager } = options;
+	const researchProfile = getResearchProfile(config.researchProfile);
 	const effectiveAgentDir = config.agentDir ?? options.agentDir;
 	const authStorage = AuthStorage.create(join(effectiveAgentDir, "auth.json"), {
 		usePrimeCliConfig: effectiveAgentDir === options.agentDir,
@@ -748,15 +773,15 @@ async function prepareRuntimeServices(options: {
 		noBuiltinHerdrReporter: (options.sessionOptionsOverride?.rlmDepth ?? 0) > 0,
 		telemetryDisabled: config.telemetryDisabled,
 		resourceLoaderOptions: {
-			additionalExtensionPaths: config.extensions,
-			additionalSkillPaths: config.skills,
+			additionalExtensionPaths: researchProfile ? undefined : config.extensions,
+			additionalSkillPaths: researchProfile ? getResearchProfileSkillPaths(researchProfile) : config.skills,
 			additionalPromptTemplatePaths: config.promptTemplates,
 			additionalThemePaths: config.themes,
-			noExtensions: config.noExtensions,
-			noSkills: config.noSkills,
-			noPromptTemplates: config.noPromptTemplates,
-			noThemes: config.noThemes,
-			noContextFiles: config.noContextFiles,
+			noExtensions: researchProfile ? true : config.noExtensions,
+			noSkills: researchProfile ? true : config.noSkills,
+			noPromptTemplates: researchProfile ? true : config.noPromptTemplates,
+			noThemes: researchProfile ? true : config.noThemes,
+			noContextFiles: researchProfile ? true : config.noContextFiles,
 			systemPrompt: config.systemPrompt,
 			appendSystemPrompt: config.appendSystemPrompt,
 			extensionFactories: options.extensionFactories,
@@ -1285,6 +1310,25 @@ export async function main(args: string[], options?: MainOptions) {
 		});
 		const { services, sessionOptions, diagnostics } = prepared;
 		const resolvedSessionOptions = resolveRuntimeSessionOptions(sessionOptions, runtimeSessionOptions);
+		const researchProfile = getResearchProfile(config.researchProfile);
+		if (researchProfile) {
+			resolvedSessionOptions.tools = ["ipython"];
+			resolvedSessionOptions.chromeBridge = false;
+			resolvedSessionOptions.includeGoals = false;
+			resolvedSessionOptions.includeDiscovery = true;
+			resolvedSessionOptions.includeCompactSkill = false;
+			resolvedSessionOptions.includeRefinement = false;
+			resolvedSessionOptions.includeRecursion = false;
+			resolvedSessionOptions.includeMcp = false;
+			resolvedSessionOptions.agentMessageController = undefined;
+			resolvedSessionOptions.agentObserveController = undefined;
+			resolvedSessionOptions.rlmMaxDepth = 0;
+			resolvedSessionOptions.computeLimits = {
+				maxConcurrency: researchProfile.limits.maxConcurrentJobs,
+				maxJobs: researchProfile.limits.maxExperiments,
+				maxWallTimeMs: researchProfile.limits.maxWallTimeMs,
+			};
+		}
 
 		const created = await createAgentSessionFromServices({
 			services,

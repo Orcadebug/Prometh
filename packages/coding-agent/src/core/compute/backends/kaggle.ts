@@ -9,19 +9,24 @@
 
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { parseStructuredResult, parseStructuredResultFile } from "../result-protocol.js";
 import type { ComputeJobStatusSnapshot, ComputeRequest, ComputeResult, ComputeSubmission } from "../types.js";
 import type { ComputeBackend } from "./base.js";
 
 interface KaggleJob {
 	id: string;
 	slug: string;
+	remoteRef: string;
 	request: ComputeRequest;
-	status: "pending" | "running" | "completed" | "failed";
+	status: "pending" | "running" | "completed" | "failed" | "cancelled";
 	startedAt: string;
 	completedAt?: string;
 	error?: string;
+	outputDir: string;
+	completion: Promise<void>;
+	resolveCompletion: () => void;
 }
 
 export interface KaggleBackendOptions {
@@ -87,12 +92,26 @@ export class KaggleComputeBackend implements ComputeBackend {
 		if (request.files && request.files.length > 100) {
 			throw new Error("kaggle backend supports at most 100 dataset files per job");
 		}
+		const remoteRef = request.metadata?.kaggle_kernel_ref;
+		if (typeof remoteRef !== "string" || !/^[^/\s]+\/[^/\s]+$/.test(remoteRef)) {
+			throw new Error(
+				'kaggle jobs require metadata.kaggle_kernel_ref in the form "owner/kernel-slug"; create the kernel once in Kaggle or choose an unused slug under your account',
+			);
+		}
+		let resolveCompletion = () => {};
+		const completion = new Promise<void>((resolve) => {
+			resolveCompletion = resolve;
+		});
 		const job: KaggleJob = {
 			id: `job_${randomUUID().replaceAll("-", "").slice(0, 16)}`,
-			slug: `prometh-${randomUUID().replaceAll("-", "").slice(0, 12)}`,
+			slug: remoteRef.split("/")[1]!,
+			remoteRef,
 			request,
 			status: "pending",
 			startedAt: new Date().toISOString(),
+			outputDir: join(this.options.stateDir, "kaggle", `output-${randomUUID().replaceAll("-", "").slice(0, 12)}`),
+			completion,
+			resolveCompletion,
 		};
 		this.jobs.set(job.id, job);
 		void this._push(job);
@@ -106,7 +125,7 @@ export class KaggleComputeBackend implements ComputeBackend {
 			mkdirSync(stagingDir, { recursive: true });
 			const datasetSources = job.request.metadata?.kaggle_dataset_sources;
 			const metadata: Record<string, unknown> = {
-				id: job.slug,
+				id: job.remoteRef,
 				title: job.request.label ?? "prometh compute job",
 				code_file: "run.py",
 				language: "python",
@@ -134,7 +153,7 @@ export class KaggleComputeBackend implements ComputeBackend {
 					break;
 				}
 				await new Promise((resolve) => setTimeout(resolve, 5_000));
-				const status = runCli(cliPath, ["kernels", "status", job.slug]);
+				const status = runCli(cliPath, ["kernels", "status", job.remoteRef]);
 				if (!status.ok) {
 					job.status = "failed";
 					job.error = `kaggle kernels status failed: ${status.stderr.trim().slice(0, 400)}`;
@@ -156,6 +175,8 @@ export class KaggleComputeBackend implements ComputeBackend {
 			job.status = "failed";
 			job.error = error instanceof Error ? error.message : String(error);
 			job.completedAt = new Date().toISOString();
+		} finally {
+			job.resolveCompletion();
 		}
 	}
 
@@ -180,23 +201,44 @@ export class KaggleComputeBackend implements ComputeBackend {
 			throw new Error(`unknown compute job "${jobId}"`);
 		}
 		if (job.status === "pending" || job.status === "running") {
-			throw new Error(`job ${jobId} has not finished`);
+			await job.completion;
 		}
-		// Output download is intentionally not implemented in v1; result
-		// retrieval requires the kaggle CLI output download which needs an
-		// authenticated session and is deferred to a follow-up.
+		let artifacts: ComputeResult["artifacts"] = [];
+		let stdout = "";
+		let structuredResult: ComputeResult["structuredResult"];
+		if (job.status === "completed") {
+			const output = runCli(this.options.cliPath ?? "kaggle", [
+				"kernels",
+				"output",
+				job.remoteRef,
+				"-p",
+				job.outputDir,
+			]);
+			if (!output.ok) {
+				job.status = "failed";
+				job.error = `kaggle kernels output failed: ${output.stderr.trim().slice(0, 400)}`;
+			} else {
+				artifacts = this._collectArtifacts(job.outputDir);
+				const resultPath = job.request.resultFile ? join(job.outputDir, job.request.resultFile) : undefined;
+				structuredResult = resultPath
+					? parseStructuredResultFile(resultPath)
+					: this._findStructuredResult(job.outputDir);
+				stdout = output.stdout;
+			}
+		}
 		return {
 			status: job.status,
 			exitCode: job.status === "completed" ? 0 : 1,
-			stdout: "",
+			stdout,
 			stderr: "",
 			stdoutTruncated: false,
 			stderrTruncated: false,
 			timedOut: false,
 			error: job.error,
-			metrics: {},
-			workDir: "",
-			artifacts: [],
+			structuredResult,
+			metrics: structuredResult?.metrics ?? {},
+			workDir: job.outputDir,
+			artifacts,
 			startedAt: job.startedAt,
 			completedAt: job.completedAt ?? new Date().toISOString(),
 			durationMs: 0,
@@ -209,9 +251,34 @@ export class KaggleComputeBackend implements ComputeBackend {
 			throw new Error(`unknown compute job "${jobId}"`);
 		}
 		if (job.status === "pending" || job.status === "running") {
-			job.status = "failed";
+			const cancelled = runCli(this.options.cliPath ?? "kaggle", ["kernels", "cancel", job.remoteRef]);
+			job.status = "cancelled";
 			job.error = "cancelled";
+			if (!cancelled.ok) job.error = `kaggle kernels cancel failed: ${cancelled.stderr.trim().slice(0, 400)}`;
 			job.completedAt = new Date().toISOString();
+			job.resolveCompletion();
 		}
+	}
+
+	private _collectArtifacts(dir: string): ComputeResult["artifacts"] {
+		if (!existsSync(dir)) return [];
+		const artifacts: ComputeResult["artifacts"] = [];
+		for (const entry of readdirSync(dir, { recursive: true })) {
+			const path = join(dir, String(entry));
+			if (!statSync(path).isFile()) continue;
+			artifacts.push({ kind: path.endsWith(".json") ? "metrics" : "checkpoint", path });
+		}
+		return artifacts;
+	}
+
+	private _findStructuredResult(dir: string): ComputeResult["structuredResult"] {
+		for (const artifact of this._collectArtifacts(dir)) {
+			if (artifact.path.endsWith(".json")) {
+				const parsed =
+					parseStructuredResultFile(artifact.path) ?? parseStructuredResult(readFileSync(artifact.path, "utf8"));
+				if (parsed) return parsed;
+			}
+		}
+		return undefined;
 	}
 }
