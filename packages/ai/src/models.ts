@@ -21,13 +21,23 @@ type ModelApi<
 	TProvider extends KnownProvider,
 	TModelId extends keyof ModelsFor<TProvider>,
 > = ModelsFor<TProvider>[TModelId] extends { api: infer TApi } ? (TApi extends Api ? TApi : never) : never;
+type StaticModelApi<TProvider extends keyof typeof MODELS, TModelId extends keyof (typeof MODELS)[TProvider]> =
+	(typeof MODELS)[TProvider][TModelId] extends { api: infer TApi } ? (TApi extends Api ? TApi : never) : never;
 
-export function getModel<TProvider extends KnownProvider, TModelId extends keyof ModelsFor<TProvider>>(
+export function getModel<TProvider extends keyof typeof MODELS, TModelId extends keyof (typeof MODELS)[TProvider]>(
 	provider: TProvider,
 	modelId: TModelId,
-): Model<ModelApi<TProvider, TModelId>> {
+): Model<StaticModelApi<TProvider, TModelId>>;
+
+/**
+ * Look up a dynamically configured or no-longer-listed model. Catalog refreshes
+ * are intentionally allowed to remove old ids, so this overload cannot retain
+ * a statically known API discriminator.
+ */
+export function getModel(provider: KnownProvider, modelId: string): Model<any>;
+export function getModel(provider: KnownProvider, modelId: string): Model<any> {
 	const providerModels = modelRegistry.get(provider);
-	return providerModels?.get(modelId as string) as Model<ModelApi<TProvider, TModelId>>;
+	return providerModels?.get(modelId) as Model<any>;
 }
 
 export function getProviders(): KnownProvider[] {
