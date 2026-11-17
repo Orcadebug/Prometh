@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { findEnvKeys, getEnvApiKey } from "../src/env-api-keys.js";
 import { getModel, getModels, getSupportedThinkingLevels } from "../src/models.js";
+import type { OpenAICompletionsCompat } from "../src/types.js";
 
 const originalPrimeApiKey = process.env.PRIME_API_KEY;
 
@@ -82,10 +83,11 @@ describe("Prime Inference models", () => {
 	it("uses reasoning toggles for models without effort selectors", () => {
 		for (const provider of ["prime-inference", "openrouter"] as const) {
 			const model = getModel(provider, "qwen/qwen3.7-flash");
+			const compat = model.compat as OpenAICompletionsCompat | undefined;
 
-			expect(model.compat?.supportsReasoningEffort).toBe(false);
+			expect(compat?.supportsReasoningEffort).toBe(false);
 			expect(getSupportedThinkingLevels(model)).toEqual(["off", "high"]);
-			if (provider === "prime-inference") expect(model.compat?.thinkingFormat).toBe("openrouter");
+			if (provider === "prime-inference") expect(compat?.thinkingFormat).toBe("openrouter");
 		}
 	});
 
